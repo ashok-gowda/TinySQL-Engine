@@ -1,9 +1,10 @@
-#include "statement.h"
+#include "selectStatement.h"
 
-class selectStatement:public statement
+bool parseSelect
+void selectStatement::parse(parseTree* current)
 {
-public:
-	void parse(parseTree* current);
+
+}
 	void parseFrom();
 	void parseDistinct();
 	void parseSelectList();

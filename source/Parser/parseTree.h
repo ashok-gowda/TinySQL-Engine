@@ -4,28 +4,23 @@
 class parseTree
 {
 public:
-	parseTree(char* val, int type, parseTree* par)
+	parseTree(char* val, int type, parseTree* par = NULL)
 	{
 		value = new char[strlen(val) + 1];
 		strcpy_s(value, strlen(val)+1, val);
 		parent = par;
-		numberOfChildren = 0;
+		if (!par)
+			par->setChild(this);
 	}
 
 
 	void setChild(parseTree* child)
 	{
-		children[numberOfChildren++] = child;
+		children.push_back(child);
 	}
 	std::vector<parseTree*> getChildren()
 	{
 		return children;
-	}
-
-
-	int getNumberOfChildren()
-	{
-		return numberOfChildren;
 	}
 
 
@@ -65,7 +60,6 @@ public:
 private:
 	char* value;
 	int nodeType;
-	int numberOfChildren;
 	parseTree* parent;
 	std::vector<parseTree*> children;
 };

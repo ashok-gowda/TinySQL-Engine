@@ -53,8 +53,7 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="ExtensionSettings">
-  </ImportGroup>
+  <ImportGroup Label="ExtensionSettings" />
   <ImportGroup Label="Shared">
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -146,9 +145,19 @@
     <ClCompile Include="Operations.cpp" />
     <ClCompile Include="StorageManager\StorageManager.cpp" />
     <ClCompile Include="StorageManager\TestStorageManager.cpp" />
-    <ClCompile Include="TinySQLInterpretor.cpp" />
+    <ClCompile Include="Source\Parser\selectStatement.cpp" />
+    <ClCompile Include="Source\TinySQLInterpretor.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\Parser\createStatement.h" />
+    <ClInclude Include="Source\Parser\deleteStatement.h" />
+    <ClInclude Include="Source\Parser\dropStatement.h" />
+    <ClInclude Include="Source\Parser\insertStatement.h" />
+    <ClInclude Include="Source\Parser\parseTree.h" />
+    <ClInclude Include="Source\Parser\selectStatement.h" />
+    <ClInclude Include="Source\Parser\statement.h" />
+    <ClInclude Include="Source\Parser\statementTypesConstants.h" />
+    <ClInclude Include="Source\TinySQLInterpretor.h" />
     <ClInclude Include="StorageManager\Block.h" />
     <ClInclude Include="StorageManager\Config.h" />
     <ClInclude Include="StorageManager\Disk.h" />
@@ -160,6 +169,5 @@
     <ClInclude Include="StorageManager\Tuple.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-  </ImportGroup>
+  <ImportGroup Label="ExtensionTargets" />
 </Project>
