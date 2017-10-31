@@ -51,8 +51,8 @@ bool isLiteral(std::string line, int& index, parseTree* current)
 {
 	bool flag = false;
 	char val[100];
-	int count = 0, counter=index;
-	while (counter != line.size() && !isspace(line[counter]) && line[counter]!=')')
+	int count = 0, counter = index;
+	while (counter != line.size() && !isspace(line[counter]) && line[counter] != ')')
 	{
 		if (line[counter] == '\"')
 		{
@@ -94,7 +94,7 @@ bool isInteger(std::string line, int& index, parseTree* current)
 {
 	bool flag = false;
 	char val[10];
-	int count = 0, counter=index;
+	int count = 0, counter = index;
 	while (counter != line.size() && !isspace(line[counter]) && isdigit(line[counter]))
 	{
 		val[count++] = line[counter];
@@ -121,7 +121,7 @@ bool isName(std::string line, int& index, int type, parseTree* current)
 		flag = true;
 		counter++;
 	}
-	while (counter != line.size() && !isspace(line[counter]) && line[counter]!='.' && line[counter]!=')')
+	while (counter != line.size() && !isspace(line[counter]) && line[counter] != '.' && line[counter] != ')')
 	{
 		if (isalnum(line[counter]))
 			counter++;
@@ -315,9 +315,72 @@ bool isBooleanFactor(std::string line, int& index, parseTree* current)
 	{
 		p1->setParent(current);
 		current->setChild(p1);
+		index = counter;
 	}
+	else
+		deleteNode(p1);
+	return flag;
 }
+
+bool isBooleanTerm(std::string line, int& index, parseTree* current)
+{
+	bool flag = false;
+	parseTree* p1 = createNode(NULL, BOOLEANTERM, "boolean-term");
+	int counter = index;
+	if (isBooleanFactor(line, counter, p1))
+	{
+		while (line[counter] != '\n' && isspace(line[counter]))
+			counter++;
+		if (line[counter] == 'A' && line[counter + 1] == 'N' && line[counter + 2] == 'D')
+		{
+			counter += 3;
+			parseTree* p2 = createNode(p1, TERMINALS, "AND");
+			if (isBooleanTerm(line, counter, p1))
+				flag = true;
+		}
+		else
+			flag = true;
+	}
+	if (flag)
+	{
+		index = counter;
+		p1->setParent(current);
+		current->setChild(p1);
+	}
+	else
+		deleteNode(p1);
+	return flag;
+}
+
 bool checkSearchCondition(std::string line, int& index, parseTree* current)
 {
+	bool flag = false;
+	parseTree* p1 = createNode(NULL, SEARCHCONDITION, "search-condition");
+	int counter = index;
+	if (isBooleanTerm(line, counter, p1))
+	{
+		while (line[counter] != '\n' && isspace(line[counter]))
+			counter++;
+		if (line[counter] == 'O' && line[counter + 1] == 'R')
+		{
+			counter += 2;
+			parseTree* p2 = createNode(p1, TERMINALS, "OR");
+			while (line[counter] != '\n' && isspace(line[counter]))
+				counter++;
+			if (checkSearchCondition(line, counter, p1))
+				flag = true;
+		}
+		else
+			flag = true;
+	}
+	if (flag)
+	{
+		index = counter;
+		p1->setParent(current);
+		current->setChild(p1);
+	}
+	else
+		deleteNode(p1);
 
+	return flag;
 }
