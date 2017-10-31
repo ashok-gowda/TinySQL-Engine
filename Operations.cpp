@@ -103,6 +103,25 @@ bool insertTable(string tableName,SchemaManager& schema_manager, std::map<string
 	return true;
 }
 
+bool dropTable(string table_name, ofstream &file_output, SchemaManager &schema_manager){
+	try {
+		Relation * table_relation = schema_manager.getRelation(table_name);
+		bool result = table_relation->deleteBlocks(0);
+		if (!result) {
+			throw "Deleting from the disk for table " + table_name + " has failed";
+		}
+		result = schema_manager.deleteRelation(table_name);
+		if (!result) {
+			throw "Deleting table relation " + table_name + " has failed";
+		}
+	}
+	catch (char *s) {
+		cerr << s;
+		return false;
+	}
+	return true;
+}
+
 
 
 
