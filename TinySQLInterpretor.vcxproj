@@ -143,6 +143,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Operations.cpp" />
+    <ClCompile Include="Source\Parser\createStatement.cpp" />
+    <ClCompile Include="Source\Parser\deleteStatement.cpp" />
+    <ClCompile Include="Source\Parser\dropStatement.cpp" />
+    <ClCompile Include="Source\Parser\insertStatement.cpp" />
     <ClCompile Include="StorageManager\StorageManager.cpp" />
     <ClCompile Include="StorageManager\TestStorageManager.cpp" />
     <ClCompile Include="Source\Parser\selectStatement.cpp" />
