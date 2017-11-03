@@ -1,6 +1,6 @@
 #include <string>
 #include "parseTree.h"
-
+#include <locale>
 #define LETTER 1
 #define DIGIT 2
 #define INTEGER 3
@@ -45,6 +45,24 @@ void deleteNode(parseTree* node)
 		delete temp;
 	}
 	delete node;
+}
+
+bool matchString(std::string line, int& index, char* str)
+{
+	int i = index;
+	char val[100];
+	std::locale loc;
+	while (i < index + strlen(str) && i < line.size())
+	{
+		val[i - index] = std::tolower(line[i], loc);
+		i++;
+	}
+	val[i] = '\0';
+	if (!strcmp(val, str))
+	{
+		index += strlen(str);
+		return true;
+	}
 }
 
 bool isLiteral(std::string line, int& index, parseTree* current)
@@ -158,20 +176,24 @@ bool isColumnName(std::string line, int& index, parseTree* cur)
 {
 	bool flag = false;
 	int counter = index;
+	bool tableNameCheck = true;
 	parseTree* p1 = createNode(NULL, COLUMNNAME, "column-name");
-	if (isName(line, counter, TABLENAME, p1))
+	if (counter != line.size() && isName(line, counter, TABLENAME, p1))
 	{
-		if (line[counter] == '.')
+		if (counter != line.size() && line[counter] == '.')
 		{
 			parseTree* p2 = createNode(p1, TERMINALS, ".");
 			counter++;
 		}
 		else
-			return false;
+			tableNameCheck = false;
 	}
-	if (isName(line, counter, ATTRIBUTENAME, p1))
+	if (tableNameCheck)
 	{
-		flag = true;
+		if (counter != line.size() && isName(line, counter, ATTRIBUTENAME, p1))
+		{
+			flag = true;
+		}
 	}
 	if (flag)
 	{
@@ -223,11 +245,11 @@ bool isTerm(std::string line, int& index, parseTree* current)
 	bool flag = false;
 	int counter = index;
 	parseTree* p1 = createNode(NULL, TERM, "term");
-	if (isColumnName(line, counter, p1))
+	if (counter != line.size() && isColumnName(line, counter, p1))
 		flag = true;
-	else if (isLiteral(line, counter, p1))
+	else if (counter != line.size() && isLiteral(line, counter, p1))
 		flag = true;
-	else if (isInteger(line, counter, p1))
+	else if (counter != line.size() && isInteger(line, counter, p1))
 		flag = true;
 	if (flag)
 	{
@@ -245,36 +267,36 @@ bool isExpression(std::string line, int& index, parseTree* current)
 	int counter = index;
 	bool flag = false;
 	parseTree* p1 = createNode(NULL, EXPRESSION, "expression");
-	if (line[counter++] != '(')
+	if (counter != line.size() && line[counter++] != '(')
 	{
-		if (isTerm(line, counter, p1))
+		if (counter != line.size() && isTerm(line, counter, p1))
 			flag = true;
 	}
 	else
 	{
 		parseTree *p2, *p3, *p4;
 		p2 = createNode(p1, TERMINALS, "(");
-		if (isTerm(line, counter, p1))
+		if (counter != line.size() && isTerm(line, counter, p1))
 		{
 			bool operatorFlag = true;
-			while (line[counter] != '\n' && isspace(line[counter]))
+			while (counter != line.size() && line[counter] != '\n' && isspace(line[counter]))
 				counter++;
-			if (line[counter] == '+')
+			if (counter != line.size() && line[counter] == '+')
 				p3 = createNode(p1, TERMINALS, "+");
-			else if (line[counter] == '-')
+			else if (counter != line.size() && line[counter] == '-')
 				p3 = createNode(p1, TERMINALS, "-");
-			else if (line[counter] == '*')
+			else if (counter != line.size() && line[counter] == '*')
 				p3 = createNode(p1, TERMINALS, "*");
 			else
 				operatorFlag = false;
 			if (operatorFlag)
 			{
 				counter++;
-				while (line[counter] != '\n' && isspace(line[counter]))
+				while (counter != line.size() && line[counter] != '\n' && isspace(line[counter]))
 					counter++;
-				if (isTerm(line, counter, p1))
+				if (counter != line.size() && isTerm(line, counter, p1))
 				{
-					if (line[counter++] == ')')
+					if (counter != line.size() && line[counter++] == ')')
 					{
 						p4 = createNode(p1, TERMINALS, ")");
 						flag = true;
@@ -299,15 +321,15 @@ bool isBooleanFactor(std::string line, int& index, parseTree* current)
 	bool flag = false;
 	int counter = index;
 	parseTree* p1 = createNode(NULL, BOOLEANFACTOR, "boolean-factor");
-	if (isExpression(line, counter, p1))
+	if (counter != line.size() && isExpression(line, counter, p1))
 	{
-		while (line[counter] != '\n' && isspace(line[counter]))
+		while (counter != line.size() && line[counter] != '\n' && isspace(line[counter]))
 			counter++;
-		if (isComparisonOperator(line, counter, p1))
+		if (counter != line.size() && isComparisonOperator(line, counter, p1))
 		{
-			while (line[counter] != '\n' && isspace(line[counter]))
+			while (counter != line.size() && line[counter] != '\n' && isspace(line[counter]))
 				counter++;
-			if (isExpression(line, counter, p1))
+			if (counter != line.size() && isExpression(line, counter, p1))
 				flag = true;
 		}
 	}
@@ -327,15 +349,17 @@ bool isBooleanTerm(std::string line, int& index, parseTree* current)
 	bool flag = false;
 	parseTree* p1 = createNode(NULL, BOOLEANTERM, "boolean-term");
 	int counter = index;
-	if (isBooleanFactor(line, counter, p1))
+	if (counter != line.size() && isBooleanFactor(line, counter, p1))
 	{
-		while (line[counter] != '\n' && isspace(line[counter]))
+		while (counter != line.size() && line[counter] != '\n' && isspace(line[counter]))
 			counter++;
-		if (line[counter] == 'A' && line[counter + 1] == 'N' && line[counter + 2] == 'D')
+		if (counter != line.size() && matchString(line, counter, "and"))
 		{
 			counter += 3;
 			parseTree* p2 = createNode(p1, TERMINALS, "AND");
-			if (isBooleanTerm(line, counter, p1))
+			while (counter != line.size() && line[counter] != '\n' && isspace(line[counter]))
+				counter++;
+			if (counter != line.size() && isBooleanTerm(line, counter, p1))
 				flag = true;
 		}
 		else
@@ -357,17 +381,17 @@ bool checkSearchCondition(std::string line, int& index, parseTree* current)
 	bool flag = false;
 	parseTree* p1 = createNode(NULL, SEARCHCONDITION, "search-condition");
 	int counter = index;
-	if (isBooleanTerm(line, counter, p1))
+	if (counter != line.size() && isBooleanTerm(line, counter, p1))
 	{
-		while (line[counter] != '\n' && isspace(line[counter]))
+		while (counter != line.size() && line[counter] != '\n' && isspace(line[counter]))
 			counter++;
-		if (line[counter] == 'O' && line[counter + 1] == 'R')
+		if (counter != line.size() && matchString(line, counter, "or"))
 		{
 			counter += 2;
 			parseTree* p2 = createNode(p1, TERMINALS, "OR");
-			while (line[counter] != '\n' && isspace(line[counter]))
+			while (counter != line.size() && line[counter] != '\n' && isspace(line[counter]))
 				counter++;
-			if (checkSearchCondition(line, counter, p1))
+			if (counter != line.size() && checkSearchCondition(line, counter, p1))
 				flag = true;
 		}
 		else

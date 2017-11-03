@@ -1,8 +1,23 @@
-class statements
+#include "statement.h"
+
+class deleteStatement :public statement
 {
-private:
-	bool correctSyntactically;
 public:
-	virtual void parse() = 0;
-	virtual void checkSyntax() = 0;
+	deleteStatement()
+	{
+		syntaxValid = false;
+		root = NULL;
+	}
+	void parse(std::string line, int& index);
+	parseTree* getRoot()
+	{
+		return root;
+	}
+	bool isValidSyntax()
+	{
+		return syntaxValid;
+	}
+private:
+	bool syntaxValid;
+	parseTree* root;
 };

@@ -3,17 +3,21 @@
 class selectStatement:public statement
 {
 public:
-	void parse(parseTree* current);
-	void parseFrom();
-	void parseDistinct();
-	void parseSelectList();
-	void parseTableList();
-	void parseOrderBy();
-	bool checkSyntax();
-	bool parseWhere();
-	bool parseSearchCondition();
-
-
+	selectStatement()
+	{
+		syntaxValid = false;
+		root = NULL;
+	}
+	void parse(std::string line, int& index);
+	parseTree* getRoot()
+	{
+		return root;
+	}
+	bool isValidSyntax()
+	{
+		return syntaxValid;
+	}
 private:
-	bool correctSyntactically;
+	bool syntaxValid;
+	parseTree* root;
 };
