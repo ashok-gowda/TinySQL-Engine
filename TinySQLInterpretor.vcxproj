@@ -147,8 +147,9 @@
     <ClCompile Include="Source\Parser\deleteStatement.cpp" />
     <ClCompile Include="Source\Parser\dropStatement.cpp" />
     <ClCompile Include="Source\Parser\insertStatement.cpp" />
+    <ClCompile Include="Source\Parser\parseTree.cpp" />
+    <ClCompile Include="Source\Parser\statementTypesConstants.cpp" />
     <ClCompile Include="StorageManager\StorageManager.cpp" />
-    <ClCompile Include="StorageManager\TestStorageManager.cpp" />
     <ClCompile Include="Source\Parser\selectStatement.cpp" />
     <ClCompile Include="Source\TinySQLInterpretor.cpp" />
   </ItemGroup>

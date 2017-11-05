@@ -57,8 +57,9 @@ void createStatement::parse(std::string line, int& index)
 		}
 		while (counter != line.size() && line[counter] != '\n' && isspace(line[counter]))
 			counter++;
-		if (counter != line.size() && line[counter++] == '(')
+		if (counter != line.size() && line[counter] == '(')
 		{
+			counter++;
 			parseTree* p4 = createNode(p1, TERMINALS, "(");
 			while (counter != line.size() && line[counter] != '\n' && isspace(line[counter]))
 				counter++;
@@ -66,8 +67,9 @@ void createStatement::parse(std::string line, int& index)
 			{
 				while (counter != line.size() && line[counter] != '\n' && isspace(line[counter]))
 					counter++;
-				if (counter != line.size() && line[counter++] == ')')
+				if (counter != line.size() && line[counter] == ')')
 				{
+					counter++;
 					parseTree* p5 = createNode(p1, TERMINALS, ")");
 					attributeListCheck = true;
 				}

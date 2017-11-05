@@ -40,4 +40,5 @@ void deleteStatement::parse(std::string line, int& index)
 		}
 		else
 			deleteNode(p1);
+	}
 }

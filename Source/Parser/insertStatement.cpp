@@ -97,13 +97,15 @@ bool checkInsertTuples(std::string line, int& index, parseTree* current)
 		parseTree* p2 = createNode(p1, TERMINALS, "VALUES");
 		while (counter != line.size() && line[counter] != '\n' && isspace(line[counter]))
 			counter++;
-		if (counter != line.size() && line[counter++] == '(')
+		if (counter != line.size() && line[counter] == '(')
 		{
+			counter++;
 			parseTree* p3 = createNode(p1, TERMINALS, "(");
 			if (counter != line.size() && isValueList(line, counter, p1))
 			{
-				if (counter != line.size() && line[counter++] == ')')
+				if (counter != line.size() && line[counter] == ')')
 				{
+					counter++;
 					parseTree* p4 = createNode(p1, TERMINALS, ")");
 					flag = true;
 				}
@@ -159,8 +161,9 @@ void insertStatement::parse(std::string line, int& index)
 		{
 			while (counter != line.size() && line[counter] != '\n' && isspace(line[counter]))
 				counter++;
-			if (counter != line.size() && line[counter++] == '(')
+			if (counter != line.size() && line[counter] == '(')
 			{
+				counter++;
 				parseTree* p4 = createNode(p1, TERMINALS, "(");
 				while (counter != line.size() && line[counter] != '\n' && isspace(line[counter]))
 					counter++;
@@ -168,8 +171,9 @@ void insertStatement::parse(std::string line, int& index)
 				{
 					while (counter != line.size() && line[counter] != '\n' && isspace(line[counter]))
 						counter++;
-					if (counter != line.size() && line[counter++] == ')')
+					if (counter != line.size() && line[counter] == ')')
 					{
+						counter++;
 						parseTree* p5 = createNode(p1, TERMINALS, ")");
 						tableNameCheck = true;
 					}
