@@ -1,18 +1,4 @@
-#include<iostream>
-#include<fstream>
-#include<iterator>
-#include<cstdlib>
-#include<string>
-#include<ctime>
-#include "StorageManager\Block.h"
-#include "StorageManager\Config.h"
-#include "StorageManager\Disk.h"
-#include "StorageManager\Field.h"
-#include "StorageManager\MainMemory.h"
-#include "StorageManager\Relation.h"
-#include "StorageManager\Schema.h"
-#include "StorageManager\SchemaManager.h"
-#include "StorageManager\Tuple.h"
+#include "Operations.h"
 
 std::ofstream fout;
 
@@ -63,8 +49,11 @@ inline bool isInteger(const std::string & s)
 
 
 bool insertTable(string tableName,SchemaManager& schema_manager, std::map<string,string> map_of_attributes, MainMemory& mem){
-	Relation * relation = schema_manager.getRelation(tableName);
 	try {
+		Relation * relation = schema_manager.getRelation(tableName);
+		if (relation == NULL) {
+			throw "Table" + tableName + " Does not exist";
+		}
 		Tuple t = relation->createTuple();
 		Schema scheme_of_tuple = t.getSchema();
 		bool result = false;
@@ -94,9 +83,9 @@ bool insertTable(string tableName,SchemaManager& schema_manager, std::map<string
 			}
 			 appendTupleToRelation(relation, mem, 0, t);
 		}
-
+		fout << *relation << "\n\n\n";
 	}
-	catch (char *s) {
+	catch (std::string s) {
 		cerr << s;
 		return false;
 	}
@@ -104,18 +93,26 @@ bool insertTable(string tableName,SchemaManager& schema_manager, std::map<string
 }
 
 bool dropTable(string table_name, ofstream &file_output, SchemaManager &schema_manager){
+	bool result = false;
 	try {
 		Relation * table_relation = schema_manager.getRelation(table_name);
-		bool result = table_relation->deleteBlocks(0);
-		if (!result) {
-			throw "Deleting from the disk for table " + table_name + " has failed";
+		if (!table_relation)
+		{
+			throw table_name + " doesn't exist";
 		}
+		int num_of_blocks = table_relation->getNumOfBlocks();
+		if (num_of_blocks != 0) {
+			result = table_relation->deleteBlocks(0);
+			if (!result) {
+				throw "Deleting from the disk for table " + table_name + " has failed";
+			}
+		}	
 		result = schema_manager.deleteRelation(table_name);
 		if (!result) {
 			throw "Deleting table relation " + table_name + " has failed";
 		}
 	}
-	catch (char *s) {
+	catch (std::string s) {
 		cerr << s;
 		return false;
 	}
