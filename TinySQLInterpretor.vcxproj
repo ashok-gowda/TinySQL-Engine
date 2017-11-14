@@ -149,11 +149,13 @@
     <ClCompile Include="Source\Parser\insertStatement.cpp" />
     <ClCompile Include="Source\Parser\parseTree.cpp" />
     <ClCompile Include="Source\Parser\statementTypesConstants.cpp" />
+    <ClCompile Include="source\Query Executer\Executer.cpp" />
     <ClCompile Include="StorageManager\StorageManager.cpp" />
     <ClCompile Include="Source\Parser\selectStatement.cpp" />
     <ClCompile Include="Source\TinySQLInterpretor.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Operations.h" />
     <ClInclude Include="Source\Parser\createStatement.h" />
     <ClInclude Include="Source\Parser\deleteStatement.h" />
     <ClInclude Include="Source\Parser\dropStatement.h" />
@@ -162,6 +164,7 @@
     <ClInclude Include="Source\Parser\selectStatement.h" />
     <ClInclude Include="Source\Parser\statement.h" />
     <ClInclude Include="Source\Parser\statementTypesConstants.h" />
+    <ClInclude Include="source\Query Executer\Executer.h" />
     <ClInclude Include="Source\TinySQLInterpretor.h" />
     <ClInclude Include="StorageManager\Block.h" />
     <ClInclude Include="StorageManager\Config.h" />

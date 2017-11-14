@@ -1,0 +1,2 @@
+CREATE TABLE course (sid INT, homework INT, project INT, exam INT, grade STR20)
+DROP TABLE course
