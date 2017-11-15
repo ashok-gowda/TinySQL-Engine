@@ -81,9 +81,9 @@ bool insertTable(string tableName,SchemaManager& schema_manager, std::map<string
 				}
 
 			}
-			 appendTupleToRelation(relation, mem, 0, t);
 		}
-		fout << *relation << "\n\n\n";
+		appendTupleToRelation(relation, mem, 0, t);
+		relation->printRelation();
 	}
 	catch (std::string s) {
 		cerr << s;
