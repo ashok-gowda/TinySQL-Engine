@@ -5,7 +5,7 @@ class JoinCondition {
 	std::vector<OperandOperator *> operand1;
 	std::string operatorOfOperation;
 	std::vector<OperandOperator *> operand2;
-
+	kAndOrOperator andOrOperator;
 public:
 	JoinCondition(std::vector<OperandOperator *> operand1,std::string operatorOfOperation, std::vector<OperandOperator *> operand2) {
 		this->operand1 = operand1;
@@ -24,5 +24,8 @@ public:
 	std::string getOperatorOfOperation() {
 		return this->operatorOfOperation;
 	}
-
+	kAndOrOperator getAndOrOperator()
+	{
+		return andOrOperator;
+	}
 };
