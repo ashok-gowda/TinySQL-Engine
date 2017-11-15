@@ -13,7 +13,7 @@
 #include "StorageManager\Schema.h"
 #include "StorageManager\SchemaManager.h"
 #include "StorageManager\Tuple.h"
-#include "JoinCondition.cpp"
+#include "JoinCondition.h"
 #include "Operations.h"
 
 

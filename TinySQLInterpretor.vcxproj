@@ -142,6 +142,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="JoinCondition.cpp" />
     <ClCompile Include="Operations.cpp" />
     <ClCompile Include="Source\Parser\createStatement.cpp" />
     <ClCompile Include="Source\Parser\deleteStatement.cpp" />
@@ -155,6 +156,9 @@
     <ClCompile Include="Source\TinySQLInterpretor.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Constants.h" />
+    <ClInclude Include="JoinCondition.h" />
+    <ClInclude Include="Operand.h" />
     <ClInclude Include="Operations.h" />
     <ClInclude Include="Source\Parser\createStatement.h" />
     <ClInclude Include="Source\Parser\deleteStatement.h" />
