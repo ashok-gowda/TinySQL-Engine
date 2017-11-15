@@ -1,4 +1,21 @@
+#include<iostream>
+#include<fstream>
+#include<iterator>
+#include<cstdlib>
+#include<string>
+#include<ctime>
+#include "StorageManager\Block.h"
+#include "StorageManager\Config.h"
+#include "StorageManager\Disk.h"
+#include "StorageManager\Field.h"
+#include "StorageManager\MainMemory.h"
+#include "StorageManager\Relation.h"
+#include "StorageManager\Schema.h"
+#include "StorageManager\SchemaManager.h"
+#include "StorageManager\Tuple.h"
+#include "JoinCondition.cpp"
 #include "Operations.h"
+
 
 std::ofstream fout;
 
@@ -30,6 +47,7 @@ void appendTupleToRelation(Relation* relation_ptr, MainMemory& mem, int memory_b
 		}
 		else {
 			block_ptr->appendTuple(tuple); 
+	
 			relation_ptr->setBlock(relation_ptr->getNumOfBlocks() - 1, memory_block_index); 
 		}
 	}
@@ -119,8 +137,115 @@ bool dropTable(string table_name, ofstream &file_output, SchemaManager &schema_m
 	return true;
 }
 
+void verifySchema(Schema schema, vector<JoinCondition> & listOfJoinConditions, string table_name) {
+	vector<JoinCondition>::iterator itr;
+	for (itr = listOfJoinConditions.begin(); itr != listOfJoinConditions.end(); itr++) {
+		if (!schema.fieldNameExists(itr->getOperand1())) {
+			throw "Field " + itr->getOperand1() + " Does not exist in " + table_name;
+		}
+		else if (itr->getOperand2Variable() && !schema.fieldNameExists(itr->getOperand2())) {
+			throw "Field " + itr->getOperand2() + "Does not exist in " + table_name;
+		}
+	}
+}
+
+bool checkIfTupleSatisfiesConditions(Tuple& tuple, Schema& schema, vector<JoinCondition> & listOfJoinConditions) {
+	vector<JoinCondition>::iterator itr;
+	for (itr = listOfJoinConditions.begin(); itr != listOfJoinConditions.end(); itr++) {
+		FIELD_TYPE fieldTypeOfOperand1 = schema.getFieldType(itr->getOperand1());
+		Field Operand2;
+		Field Operand1 = tuple.getField(itr->getOperand1());
+		int integerValueOfOperand2 = 0;
+		string stringValueOfOperand2 = NULL;
+		if (itr->getOperand2Variable() == false) {
+			if (fieldTypeOfOperand1 == INT) {
+				integerValueOfOperand2 = stoi(itr->getOperand2());
+			}
+			else {
+				stringValueOfOperand2 = itr->getOperand2();
+			}
+		}
+		else {
+			Operand2 = tuple.getField(itr->getOperand2());
+		}
+		if (fieldTypeOfOperand1 == INT) {
+			if (strcmp(itr->getOperatorOfOperation().c_str(), "=") == 0) {
+
+				if (itr->getOperand2Variable() && Operand1.integer != Operand2.integer) {
+					return false;
+				}
+				else if (itr->getOperand2Variable() == false && Operand1.integer != integerValueOfOperand2)
+					return false;
+			}
+			else if (strcmp(itr->getOperatorOfOperation().c_str(), "<") == 0) {
+
+				if (itr->getOperand2Variable() && Operand1.integer >= Operand2.integer) {
+					return false;
+				}
+				else if (itr->getOperand2Variable() == false && Operand1.integer >= integerValueOfOperand2)
+					return false;
+			}
+			else if (strcmp(itr->getOperatorOfOperation().c_str(), ">") == 0) {
+
+				if (itr->getOperand2Variable() && Operand1.integer <= Operand2.integer) {
+					return false;
+				}
+				else if (itr->getOperand2Variable() == false && Operand1.integer <= integerValueOfOperand2)
+					return false;
+			}
+
+		}
+		else if (fieldTypeOfOperand1 == STR20) {
+			if (strcmp(itr->getOperatorOfOperation().c_str(), "=") == 0) {
+				if (itr->getOperand2Variable() && strcmp(Operand1.str->c_str(), Operand2.str->c_str()) != 0) {
+					return false;
+				}
+				else if (itr->getOperand2Variable() == false && strcmp(Operand1.str->c_str(), stringValueOfOperand2.c_str()) != 0) {
+					return false;
+				}
+			}
+		}
+	}
+	return true;
+}
 
 
+
+
+bool selectTable(string table_name, SchemaManager &schema_manager, vector<JoinCondition> &listOfJoinConditions, MainMemory& mem) {
+	try {
+		Relation *table_relation = schema_manager.getRelation(table_name);
+		if (table_relation == NULL) {
+			throw "Given relation with " + table_name + " Does not exist";
+		}
+		Schema schema = table_relation->getSchema();
+		verifySchema(schema, listOfJoinConditions, table_name);
+		Block *block_pointer = mem.getBlock(0);
+		int numOfBlocks = table_relation->getNumOfBlocks();
+		for (int i = 0; i < numOfBlocks; i++) {
+			table_relation->getBlock(i, 0);
+			vector<Tuple> listOfTuples = block_pointer->getTuples();
+			vector<Tuple>::iterator itr;
+			for (itr = listOfTuples.begin(); itr != listOfTuples.end(); itr++) {
+				Tuple tuple = *itr;
+				bool resultOfCheckingOnConditions = checkIfTupleSatisfiesConditions(tuple,schema,listOfJoinConditions);
+				if (resultOfCheckingOnConditions) {
+					tuple.printTuple();
+				}
+				else {
+
+				}
+			}
+
+		}
+
+	}
+	catch (std::string s) {
+		cout << s;
+		return false;
+	}
+	return false;
+}
 
 
 
