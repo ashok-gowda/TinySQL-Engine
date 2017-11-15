@@ -1,3 +1,9 @@
+#ifndef OPERANDOPERATOR_H
+#define OPERANDOPERATOR_H
+
+
+
+
 #include <string.h>
 #include <iostream>
 #include "Constants.h"
@@ -27,3 +33,5 @@ public:
 		return type;
 	}
 };
+
+#endif // !1

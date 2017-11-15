@@ -142,7 +142,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="JoinCondition.cpp" />
     <ClCompile Include="Operations.cpp" />
     <ClCompile Include="Source\Parser\createStatement.cpp" />
     <ClCompile Include="Source\Parser\deleteStatement.cpp" />
