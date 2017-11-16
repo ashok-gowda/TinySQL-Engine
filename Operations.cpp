@@ -1,19 +1,3 @@
-#include<iostream>
-#include<fstream>
-#include<iterator>
-#include<cstdlib>
-#include<string>
-#include<ctime>
-#include "StorageManager\Block.h"
-#include "StorageManager\Config.h"
-#include "StorageManager\Disk.h"
-#include "StorageManager\Field.h"
-#include "StorageManager\MainMemory.h"
-#include "StorageManager\Relation.h"
-#include "StorageManager\Schema.h"
-#include "StorageManager\SchemaManager.h"
-#include "StorageManager\Tuple.h"
-#include "JoinCondition.h"
 #include "Operations.h"
 
 
@@ -138,13 +122,20 @@ bool dropTable(string table_name, ofstream &file_output, SchemaManager &schema_m
 }
 
 void verifySchema(Schema schema, vector<vector<JoinCondition>> &listOflistOfJoinConditions, string table_name) {
-	vector<vector<JoinCondition>>::iterator iteratorForLLofJoinConditions;
-	vector<JoinCondition>::iterator iteratorForLOfJoinConditions;
-	for (iteratorForLLofJoinConditions = listOflistOfJoinConditions.begin(); iteratorForLLofJoinConditions != listOflistOfJoinConditions.end();
-		iteratorForLLofJoinConditions++) {
-		for (iteratorForLOfJoinConditions = (*iteratorForLLofJoinConditions).begin(); iteratorForLOfJoinConditions != (*iteratorForLLofJoinConditions).end();
-			iteratorForLOfJoinConditions++) {
-
+	vector<vector<JoinCondition>>::iterator itrListOfList;
+	vector<JoinCondition>::iterator itrList;
+	for (itrListOfList = listOflistOfJoinConditions.begin(); itrListOfList != listOflistOfJoinConditions.end();
+		itrListOfList++) {
+		for (itrList = (*itrListOfList).begin(); itrList != (*itrListOfList).end();
+			itrList++) {
+			vector<OperandOperator *>::iterator operandIterator;
+			for (operandIterator = (itrList->getOperand1()).begin(); operandIterator != (itrList->getOperand1()).end(); operandIterator++) {
+				if ((*operandIterator)->getType() == VARIABLE) {
+					if (!schema.fieldNameExists((*operandIterator)->getName())) {
+						throw "Attribute Name " + (*operandIterator)->getName() + " Does not exist in Table " + (*operandIterator)->getTableName();
+					}
+				}
+			}
 		}
 	}
 
@@ -152,10 +143,76 @@ void verifySchema(Schema schema, vector<vector<JoinCondition>> &listOflistOfJoin
 	
 }
 
-bool checkIfTupleSatisfiesConditions(Tuple& tuple, Schema& schema, vector<vector<JoinCondition>> &listOfOfJoinConditions) {
-	vector<JoinCondition>::iterator itr;
-	
+
+int getValueFromConversionOfPrefixToInfix(vector<OperandOperator *> vectorOfOperands, Tuple& tuple) {
+	stack<int> stackOfIntegers;
+	vector<OperandOperator *>::reverse_iterator operandIterator;
+	int value = 0, loop = 0;
+	for (operandIterator = vectorOfOperands.rbegin(); operandIterator != vectorOfOperands.rend(); operandIterator++) {
+		if ((*operandIterator)->getType() == PATTERN) {
+			stackOfIntegers.push(stoi((*operandIterator)->getName()));
+		}
+		else if ((*operandIterator)->getType() == VARIABLE) {
+			stackOfIntegers.push(tuple.getField((*operandIterator)->getName()).integer);
+		}
+		else if ((*operandIterator)->getType() == OPERATOR) {
+			int operator1 = stackOfIntegers.top();
+			stackOfIntegers.pop();
+			int operator2 = stackOfIntegers.top();
+			stackOfIntegers.pop();
+			if (strcmp((*operandIterator)->getName().c_str(), "+") == 0) {
+				stackOfIntegers.push(operator1 + operator2);
+			}
+			else if (strcmp((*operandIterator)->getName().c_str(), "-") == 0) {
+				stackOfIntegers.push(operator1 - operator2);
+			}
+			else if (strcmp((*operandIterator)->getName().c_str(), "*") == 0) {
+				stackOfIntegers.push(operator1 * operator2);
+			}
+
+		}
+	}
+	return stackOfIntegers.top();
 }
+
+bool checkIfTupleSatisfiesConditions(Tuple& tuple, Schema& schema, vector<vector<JoinCondition>> &listOflistOfJoinConditions) {
+	vector<vector<JoinCondition>>::iterator itrListOfList;
+	vector<JoinCondition>::iterator itrList;
+	for (itrListOfList = listOflistOfJoinConditions.begin(); itrListOfList != listOflistOfJoinConditions.end();itrListOfList++) {
+
+		for (itrList = (*itrListOfList).begin(); itrList != (*itrListOfList).end();itrList++) {
+
+			int size = itrList->getOperand1().size();
+			if (size == 1 && itrList->getOperand1().front()->getType() == VARIABLE
+			    && schema.getFieldType(itrList->getOperand1().front()->getName()) == STR20 ){
+
+				string operand1 = *tuple.getField(itrList->getOperand1().front()->getName()).str;
+				string operand2 = itrList->getOperand2().front()->getType() == VARIABLE ? *tuple.getField(itrList->getOperand2().front()->getName()).str :
+					itrList->getOperand2().front()->getName();
+				if (strcmp(itrList->getOperatorOfOperation().c_str(), "<") == 0 && strcmp(operand1.c_str(), operand2.c_str()) < 0)
+					return true;
+				else if (strcmp(itrList->getOperatorOfOperation().c_str(), "=") == 0 && strcmp(operand1.c_str(), operand2.c_str()) == 0)
+					return true;
+				else if (strcmp(itrList->getOperatorOfOperation().c_str(), ">") == 0 && strcmp(operand1.c_str(), operand2.c_str()) > 0)
+					return true;
+			}
+			else{
+				int valueOfOperand1 = getValueFromConversionOfPrefixToInfix(itrList->getOperand1(), tuple);
+				int valueOfOperand2= getValueFromConversionOfPrefixToInfix(itrList->getOperand2(), tuple);
+				if (strcmp(itrList->getOperatorOfOperation().c_str(), "<") == 0 && valueOfOperand1 < valueOfOperand2)
+					return true;
+				else if (strcmp(itrList->getOperatorOfOperation().c_str(), "=") == 0 && valueOfOperand1 == valueOfOperand2)
+					return true;
+				else if (strcmp(itrList->getOperatorOfOperation().c_str(), ">") == 0 && valueOfOperand1>valueOfOperand2)
+					return true;
+			}
+
+		}
+	}
+	return false;
+}
+
+
 
 
 
@@ -179,9 +236,6 @@ bool selectTable(string table_name, SchemaManager &schema_manager, vector<vector
 				bool resultOfCheckingOnConditions = checkIfTupleSatisfiesConditions(tuple,schema,listOfJoinConditions);
 				if (resultOfCheckingOnConditions) {
 					tuple.printTuple();
-				}
-				else {
-
 				}
 			}
 

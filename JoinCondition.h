@@ -1,3 +1,6 @@
+#ifndef JOIN_HEADER
+#define JOIN_HEADER
+
 #include<string>
 #include "Operand.h"
 #include <vector>
@@ -29,3 +32,5 @@ public:
 		return andOrOperator;
 	}
 };
+
+#endif
