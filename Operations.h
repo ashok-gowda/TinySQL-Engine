@@ -31,7 +31,7 @@ int getValueFromConversionOfPrefixToInfix(vector<OperandOperator *> vectorOfOper
 
 bool checkIfTupleSatisfiesConditions(Tuple& tuple, Schema& schema, vector<vector<JoinCondition>> &listOflistOfJoinConditions);
 
-bool selectTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition>> &listOfJoinConditions, MainMemory& mem);
+bool selectTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition*>> &listOfJoinConditions, MainMemory& mem);
 
 
 

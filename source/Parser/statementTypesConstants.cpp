@@ -339,7 +339,6 @@ bool isBooleanTerm(std::string line, int& index, parseTree* current)
 			counter++;
 		if (counter != line.size() && matchString(line, counter, "and"))
 		{
-			counter += 3;
 			parseTree* p2 = createNode(p1, TERMINALS, "AND");
 			while (counter != line.size() && line[counter] != '\n' && isspace(line[counter]))
 				counter++;
@@ -371,7 +370,6 @@ bool checkSearchCondition(std::string line, int& index, parseTree* current)
 			counter++;
 		if (counter != line.size() && matchString(line, counter, "or"))
 		{
-			counter += 2;
 			parseTree* p2 = createNode(p1, TERMINALS, "OR");
 			while (counter != line.size() && line[counter] != '\n' && isspace(line[counter]))
 				counter++;
