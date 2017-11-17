@@ -250,6 +250,7 @@ bool selectTable(string table_name, SchemaManager &schema_manager, vector<vector
 		Block *block_pointer = mem.getBlock(0);
 		int numOfBlocks = table_relation->getNumOfBlocks();
 		for (int i = 0; i < numOfBlocks; i++) {
+			block_pointer->clear();
 			table_relation->getBlock(i, 0);
 			vector<Tuple> listOfTuples = block_pointer->getTuples();
 			vector<Tuple>::iterator itr;
@@ -290,7 +291,7 @@ bool deleteTable(string table_name, SchemaManager &schema_manager, vector<vector
 			for (itr = listOfTuples.begin(); itr != listOfTuples.end(); itr++) {
 				Tuple tuple = *itr;
 				bool resultOfCheckingOnConditions = checkIfTupleSatisfiesConditions(tuple, schema, listOfJoinConditions);
-				if (resultOfCheckingOnConditions) {
+				if (!resultOfCheckingOnConditions) {
 					listOfTuplesWhichPassedSearchCondition.push_back(tuple);
 				}
 			}
