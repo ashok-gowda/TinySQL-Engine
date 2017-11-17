@@ -246,7 +246,46 @@ bool selectTable(string table_name, SchemaManager &schema_manager, vector<vector
 		cout << s;
 		return false;
 	}
-	return false;
+	return true;
+}
+
+
+bool deleteTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition>> &listOfJoinConditions, MainMemory& mem) {
+	try {
+		Relation *table_relation = schema_manager.getRelation(table_name);
+		if (table_relation == NULL) {
+			throw "Given relation with " + table_name + " Does not exist";
+		}
+		Schema schema = table_relation->getSchema();
+		verifySchema(schema, listOfJoinConditions, table_name);
+		Block *block_pointer = mem.getBlock(0);
+		int numOfBlocks = table_relation->getNumOfBlocks();
+		for (int i = 0; i < numOfBlocks; i++) {
+			table_relation->getBlock(i, 0);
+			vector<Tuple> listOfTuples = block_pointer->getTuples();
+			vector<Tuple> listOfTuplesWhichPassedSearchCondition;
+			vector<Tuple>::iterator itr;
+			for (itr = listOfTuples.begin(); itr != listOfTuples.end(); itr++) {
+				Tuple tuple = *itr;
+				bool resultOfCheckingOnConditions = checkIfTupleSatisfiesConditions(tuple, schema, listOfJoinConditions);
+				if (resultOfCheckingOnConditions) {
+					listOfTuplesWhichPassedSearchCondition.push_back(tuple);
+				}
+			}
+			block_pointer->clear();
+			for (itr = listOfTuplesWhichPassedSearchCondition.begin(); itr != listOfTuplesWhichPassedSearchCondition.end(); itr++) {
+				block_pointer->appendTuple(*itr);
+			}
+			table_relation->setBlock(i, 0);
+
+		}
+
+	}
+	catch (std::string s) {
+		cout << s;
+		return false;
+	}
+	return true;
 }
 
 
