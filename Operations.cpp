@@ -122,6 +122,9 @@ bool dropTable(string table_name, ofstream &file_output, SchemaManager &schema_m
 }
 
 void verifySchema(Schema schema, vector<vector<JoinCondition*>> &listOflistOfJoinConditions, string table_name) {
+	if (listOflistOfJoinConditions.empty()) {
+		return;
+	}
 	vector<vector<JoinCondition*>>::iterator itrListOfList;
 	vector<JoinCondition*>::iterator itrList;
 	for (itrListOfList = listOflistOfJoinConditions.begin(); itrListOfList != listOflistOfJoinConditions.end();
@@ -177,6 +180,9 @@ int getValueFromConversionOfPrefixToInfix(vector<OperandOperator *> vectorOfOper
 }
 
 bool checkIfTupleSatisfiesConditions(Tuple& tuple, Schema& schema, vector<vector<JoinCondition*>> &listOflistOfJoinConditions) {
+	if (listOflistOfJoinConditions.empty()) {
+		return true;
+	}
 	vector<vector<JoinCondition*>>::iterator itrListOfList;
 	vector<JoinCondition*>::iterator itrList;
 	for (itrListOfList = listOflistOfJoinConditions.begin(); itrListOfList != listOflistOfJoinConditions.end();itrListOfList++) {
