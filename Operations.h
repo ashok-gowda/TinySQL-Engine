@@ -25,15 +25,15 @@ bool insertTable(string tableName, SchemaManager& schema_manager, std::map<strin
 
 bool dropTable(string table_name, ofstream &file_output, SchemaManager &schema_manager);
 
-void verifySchema(Schema schema, vector<vector<JoinCondition>> &listOflistOfJoinConditions, string table_name);
+void verifySchema(Schema schema, vector<vector<JoinCondition*>> &listOflistOfJoinConditions, string table_name);
 
 int getValueFromConversionOfPrefixToInfix(vector<OperandOperator *> vectorOfOperands, Tuple& tuple);
 
-bool checkIfTupleSatisfiesConditions(Tuple& tuple, Schema& schema, vector<vector<JoinCondition>> &listOflistOfJoinConditions);
+bool checkIfTupleSatisfiesConditions(Tuple& tuple, Schema& schema, vector<vector<JoinCondition*>> &listOflistOfJoinConditions);
 
-bool selectTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition>> &listOfJoinConditions, MainMemory& mem);
+bool selectTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition*>> &listOfJoinConditions, MainMemory& mem);
 
-bool deleteTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition>> &listOfJoinConditions, MainMemory& mem);
+bool deleteTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition*>> &listOfJoinConditions, MainMemory& mem);
 
 
 
