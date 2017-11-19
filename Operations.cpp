@@ -289,21 +289,21 @@ vector<Relation*> sortSubList(Relation* relationPtr, int sizeOfSubList, vector<O
 		{
 			Block *blockPtr = mem.getBlock(j);
 			blockPtr->clear();
-			relationPtr->getBlock(i*sizeOfSubList+)
+			//relationPtr->getBlock(i*sizeOfSubList + );
 		}
 	}
-
+	return subLists;
 }
 
 Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition*>> &listOfJoinConditions, MainMemory& mem, vector<OperandOperator*> &projectionList) {
-	Relation * selection_projection = NULL;
+	Relation * intermediate_table = NULL;
 	try {
 		Relation *table_relation = schema_manager.getRelation(table_name);
 		if (table_relation == NULL) {
 			throw "Given relation with " + table_name + " Does not exist";
 		}
 		Schema schema = table_relation->getSchema();
-		Relation * intermediate_table = getIntermediateTable(schema_manager, schema, projectionList);
+		intermediate_table = getIntermediateTable(schema_manager, schema, projectionList);
 		verifySchema(schema, listOfJoinConditions, table_name);
 		Block *block_pointer = mem.getBlock(0);
 		int numOfBlocks = table_relation->getNumOfBlocks();
@@ -316,7 +316,7 @@ Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<v
 				Tuple tuple = *itr;
 				bool resultOfCheckingOnConditions = checkIfTupleSatisfiesConditions(tuple,schema,listOfJoinConditions);
 				if (resultOfCheckingOnConditions) {
-					
+					insertIntoIntermediateTable(intermediate_table->getRelationName(), schema_manager, tuple, mem, projectionList);
 				}
 			}
 
@@ -327,7 +327,7 @@ Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<v
 		cout << s;
 		return NULL;
 	}
-	return selection_projection;
+	return intermediate_table;
 }
 
 
