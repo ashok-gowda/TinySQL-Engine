@@ -242,8 +242,71 @@ bool checkIfTupleSatisfiesConditions(Tuple& tuple, Schema& schema, vector<vector
 	return false;
 }
 
+void mergeTuples(vector<Tuple>& list1, vector<Tuple>& list2, vector<Tuple>& mergeList, vector<OperandOperator*>& attributesList, Schema& schema)
+{
+	int i=0, j=0;
+	mergeList.clear();
+	while (i < list1.size() && j < list2.size())
+	{
+		Tuple t1 = list1[i];
+		Tuple t2 = list2[j];
+		for (vector<OperandOperator*>::iterator operIter = attributesList.begin(); operIter != attributesList.end(); operIter++)
+		{
+			if (schema.getFieldType((*operIter)->getName()) == STR20)
+			{
+				string val1 = *(t1.getField((*operIter)->getName()).str);
+				string val2 = *(t2.getField((*operIter)->getName()).str);
+				int compareVal = strcmp(val1.c_str(), val2.c_str());
+				if (compareVal < 0)
+				{
+					mergeList.push_back(t1);
+					i++;
+					break;
+				}
+				if (compareVal > 0)
+				{
+					mergeList.push_back(t2);
+					j++;
+					break;
+				}
+			}
+			else
+			{
+				int val1 = t1.getField((*operIter)->getName()).integer;
+				int val2 = t2.getField((*operIter)->getName()).integer;
+				if (val1 < val2)
+				{
+					mergeList.push_back(t1);
+					i++;
+					break;
+				}
+				if (val1 > val2)
+				{
+					mergeList.push_back(t2);
+					j++;
+					break;
+				}
+			}
+		}
+	}
+	while (i < list1.size())
+		mergeList.push_back(list1[i]);
+	while (j < list2.size())
+		mergeList.push_back(list2[j]);
+}
 
-
+void mergeSortTuples(vector<Tuple>& listOfTuples, vector<OperandOperator*>& attributesList, Schema& schema)
+{
+	vector<Tuple> list1, list2;
+	int i;
+	for (i = 0; i < (listOfTuples.size()/2); i++)
+		list1.push_back(listOfTuples[i]);
+	for (; i < listOfTuples.size(); i++)
+		list2.push_back(listOfTuples[i]);
+	mergeSortTuples(list1, attributesList, schema);
+	mergeSortTuples(list2, attributesList, schema);
+	mergeTuples(list1, list2, listOfTuples, attributesList, schema);
+}
 
 vector<Relation*> sortSubList(Relation* relationPtr, int sizeOfSubList, vector<OperandOperator*>& attributesList, MainMemory& mem, bool& success)
 {
@@ -258,14 +321,18 @@ vector<Relation*> sortSubList(Relation* relationPtr, int sizeOfSubList, vector<O
 		}
 	}
 	int blocksCount = relationPtr->getNumOfBlocks();
-	for (int i = 0; i < ceil((double)blocksCount / (double)sizeOfSubList); i++)
+	for (int i = 0; i < blocksCount / sizeOfSubList; i++)
 	{
 		for (int j = 0; j < sizeOfSubList; j++)
 		{
 			Block *blockPtr = mem.getBlock(j);
 			blockPtr->clear();
-			relationPtr->getBlock(i*sizeOfSubList+)
+			relationPtr->getBlock(i*sizeOfSubList + j, j);
+			vector<Tuple>listOfTuples = blockPtr->getTuples();
+			mergeSortTuples(listOfTuples, attributesList, schema);
+			blockPtr->setTuples(listOfTuples);
 		}
+		mergeSubLists(mem, sizeOfSubList, relationPtr);
 	}
 
 }
