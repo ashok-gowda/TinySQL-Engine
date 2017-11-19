@@ -5,6 +5,7 @@
 #include<string>
 #include<ctime>
 #include <stack>
+#include<math.h>
 #include "StorageManager\Block.h"
 #include "StorageManager\Config.h"
 #include "StorageManager\Disk.h"

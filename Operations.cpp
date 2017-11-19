@@ -3,6 +3,14 @@
 
 std::ofstream fout;
 
+int tableIndex = 0;
+std::string baseName = "Intermediate_table_";
+string getIntermediateTableName()
+{
+	char relationNum[10];
+	_itoa_s(tableIndex++, relationNum, 10);
+	return baseName + relationNum;
+}
 Relation * createTable(SchemaManager& schema_manager,string relation_name, vector<string> field_names, vector<enum FIELD_TYPE> field_types) {
 	Schema schema(field_names, field_types);
 	Relation* relation_ptr = schema_manager.createRelation(relation_name, schema);
@@ -237,7 +245,30 @@ bool checkIfTupleSatisfiesConditions(Tuple& tuple, Schema& schema, vector<vector
 
 
 
+vector<Relation*> sortSubList(Relation* relationPtr, int sizeOfSubList, vector<OperandOperator*>& attributesList, MainMemory& mem, bool& success)
+{
+	Schema schema = relationPtr->getSchema();
+	vector<Relation*> subLists;
+	for (vector<OperandOperator*>::iterator iter = attributesList.begin(); iter != attributesList.end(); iter++)
+	{
+		if (!schema.fieldNameExists((*iter)->getName()))
+		{
+			success = false;
+			return subLists;
+		}
+	}
+	int blocksCount = relationPtr->getNumOfBlocks();
+	for (int i = 0; i < ceil((double)blocksCount / (double)sizeOfSubList); i++)
+	{
+		for (int j = 0; j < sizeOfSubList; j++)
+		{
+			Block *blockPtr = mem.getBlock(j);
+			blockPtr->clear();
+			relationPtr->getBlock(i*sizeOfSubList+)
+		}
+	}
 
+}
 
 bool selectTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition*>> &listOfJoinConditions, MainMemory& mem) {
 	try {
