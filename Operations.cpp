@@ -261,10 +261,10 @@ void insertIntoIntermediateTable(string table_name, SchemaManager& schema_manage
 	for (itr = projectionList.begin(); itr != projectionList.end(); itr++) {
 		if (schemaOfOrginalRelation.getFieldType((*itr)->getName()) == STR20) {
 			string fieldValue=*(tuple.getField((*itr)->getName()).str);
-			fieldsToBePassed.insert((*itr)->getName(),fieldValue);
+			fieldsToBePassed.insert(make_pair((*itr)->getName(),fieldValue));
 		}
 		else {
-			fieldsToBePassed.insert((*itr)->getName(),to_string(tuple.getField((*itr)->getName()).integer));
+			fieldsToBePassed.insert(make_pair((*itr)->getName(),to_string(tuple.getField((*itr)->getName()).integer)));
 		}
 	}
 	insertTable(table_name, schema_manager, fieldsToBePassed, mem);
@@ -400,6 +400,111 @@ Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<v
 		return NULL;
 	}
 	return intermediate_table;
+}
+
+bool compareTuple(Tuple& a, Tuple&b,Schema &schema,vector<string>fieldName) {
+	vector<string>::iterator itr;
+	for (itr = fieldName.begin(); itr != fieldName.end(); itr++) {
+		if (schema.getFieldType(*itr) == STR20) {
+			int value=strcmp((*a.getField(*itr).str).c_str(),(*b.getField(*itr).str).c_str());
+			if (value > 0) {
+				return true;
+			}
+			else if(value<0) {
+				return false;
+			}
+			
+		}
+		else if (schema.getFieldType(*itr) == INT) {
+			if (a.getField(*itr).integer > b.getField(*itr).integer) {
+				return true;
+			}
+			else {
+				return false;
+			}
+		}
+	}
+	return false;
+}
+
+Relation * sortOperation(vector<Relation*>  vectorOfSubLists, SchemaManager& schema_manager, MainMemory& mem, vector<string> fieldName) {
+	vector<Relation *>::iterator itr;
+	Relation *sorted_table = NULL;
+	int relation_block_index = 0;
+	int counter = 0;
+	map<Relation* ,int> mapOfRelationNamesWithBlocks;
+	map<int,Relation*> memoryBlockIndex;
+	map<int, int> memoryTupleIndex;
+	Schema schema;
+	for (itr = vectorOfSubLists.begin(); itr != vectorOfSubLists.end(); itr++) {
+		if (counter == 0) {
+			Schema schemaOfSortedRelation= (*itr)->getSchema();
+			sorted_table = schema_manager.createRelation(getIntermediateTableName(), schemaOfSortedRelation);
+			schema = sorted_table->getSchema();
+		}
+		string relName = (*itr)->getRelationName();
+		mapOfRelationNamesWithBlocks.insert(make_pair(*itr,0));
+		memoryBlockIndex.insert(make_pair(counter,*itr));
+		memoryTupleIndex.insert(counter, 0);
+		(*itr)->getBlock(0,counter);
+		++counter;
+	}
+	Block* resultant_block_pointer= mem.getBlock(mem.getMemorySize() - 1);
+	resultant_block_pointer->clear();
+	int totalNoofTables = mapOfRelationNamesWithBlocks.size();
+	int noOfTablesComplete = 0;
+	Tuple minimumTuple = mem.getBlock(0)->getTuple(0);
+	while (noOfTablesComplete < totalNoofTables) {
+		int minimumBlockIndex = -1;
+		int minimumTupleIndex = -1;
+		for (int i = 0; i < mem.getMemorySize() - 1; i++) {
+			if (mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
+				Block* block_pointer = mem.getBlock(i);
+				int numberOfTuples = block_pointer->getNumTuples();
+				if (memoryTupleIndex[i] > numberOfTuples) {
+					Relation* relationOfBlock = memoryBlockIndex[i];
+					int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
+					if (relationOfBlock->getNumOfBlocks() < diskBlockIndex) {
+						mapOfRelationNamesWithBlocks.at(relationOfBlock) = -1;
+						++noOfTablesComplete;
+						continue;
+					}
+					else {
+						mapOfRelationNamesWithBlocks.at(relationOfBlock) = diskBlockIndex + 1;
+						relationOfBlock->getBlock(mapOfRelationNamesWithBlocks[relationOfBlock], i);
+						memoryTupleIndex.at(i) = 0;
+					}
+				}
+				if (compareTuple(minimumTuple, block_pointer->getTuple(memoryTupleIndex[i]), schema, fieldName) == true) {
+					minimumBlockIndex = i;
+					minimumTupleIndex = memoryTupleIndex[i];
+					minimumTuple = block_pointer->getTuple(memoryTupleIndex[i]);
+				}
+			}
+		}
+
+		if (resultant_block_pointer->isFull()) {
+			sorted_table->setBlock(relation_block_index++, mem.getMemorySize() - 1);
+			resultant_block_pointer->clear();
+		}
+		resultant_block_pointer->appendTuple(minimumTuple);
+		memoryTupleIndex.at(minimumBlockIndex) = minimumTupleIndex+1;
+
+		//Next first tuple
+		for (int i = 0; i < mem.getMemorySize()-1; i++) {
+			Relation * relation_pointer = memoryBlockIndex[i];
+			if (mapOfRelationNamesWithBlocks[relation_pointer] != -1) {
+				if (memoryTupleIndex[i] < mem.getBlock(i)->getNumTuples()) {
+					minimumTuple = mem.getBlock(i)->getTuple(memoryTupleIndex[i]);
+			}
+		}
+		
+	}
+		if (!resultant_block_pointer->isEmpty()) {
+			sorted_table->setBlock(relation_block_index++, mem.getMemorySize() - 1);
+			resultant_block_pointer->clear();
+		}
+	return sorted_table;
 }
 
 
