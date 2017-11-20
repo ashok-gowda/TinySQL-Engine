@@ -243,6 +243,35 @@ bool checkIfTupleSatisfiesConditions(Tuple& tuple, Schema& schema, vector<vector
 	return false;
 }
 
+
+Relation * getIntermediateTable(SchemaManager &schema_manager,Schema &schema, vector<OperandOperator*> &projectionList) {
+	vector<OperandOperator*>::iterator itr;
+	vector<string> field_names;
+	vector<enum FIELD_TYPE> field_types;
+	for (itr = projectionList.begin(); itr != projectionList.end(); itr++) {
+		field_names.push_back((*itr)->getName());
+		field_types.push_back(schema.getFieldType((*itr)->getName()));
+	}
+	return createTable(schema_manager, getIntermediateTableName(), field_names, field_types);
+}
+
+void insertIntoIntermediateTable(string table_name, SchemaManager& schema_manager, Tuple& tuple, MainMemory& mem, vector<OperandOperator*> &projectionList) {
+	vector<OperandOperator*>::iterator itr;
+	map<string, string> fieldsToBePassed;
+	Schema schemaOfOrginalRelation = tuple.getSchema();
+	for (itr = projectionList.begin(); itr != projectionList.end(); itr++) {
+		if (schemaOfOrginalRelation.getFieldType((*itr)->getName()) == STR20) {
+			string fieldValue=*(tuple.getField((*itr)->getName()).str);
+			fieldsToBePassed.insert((*itr)->getName(),fieldValue);
+		}
+		else {
+			fieldsToBePassed.insert((*itr)->getName(),to_string(tuple.getField((*itr)->getName()).integer));
+		}
+	}
+	insertTable(table_name, schema_manager, fieldsToBePassed, mem);
+}
+
+
 void mergeTuples(vector<Tuple>& list1, vector<Tuple>& list2, vector<Tuple>& mergeList, vector<OperandOperator*>& attributesList, Schema& schema)
 {
 	int i=0, j=0;
@@ -415,6 +444,7 @@ vector<Relation*> sortSubList(Relation* relationPtr, SchemaManager &schema_manag
 		{
 			Block *blockPtr = mem.getBlock(j);
 			blockPtr->clear();
+
 			relationPtr->getBlock(i*sizeOfSubList + j, j);
 			vector<Tuple>listOfTuples = blockPtr->getTuples();
 			mergeSortTuples(listOfTuples, attributesList, schema);
@@ -436,15 +466,18 @@ vector<Relation*> sortSubList(Relation* relationPtr, SchemaManager &schema_manag
 		}
 		subLists.push_back(mergeSubList(relationPtr, schema_manager, remaining, attributesList, mem));
 	}
+	return subLists;
 }
 
-bool selectTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition*>> &listOfJoinConditions, MainMemory& mem) {
+Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition*>> &listOfJoinConditions, MainMemory& mem, vector<OperandOperator*> &projectionList) {
+	Relation * intermediate_table = NULL;
 	try {
 		Relation *table_relation = schema_manager.getRelation(table_name);
 		if (table_relation == NULL) {
 			throw "Given relation with " + table_name + " Does not exist";
 		}
 		Schema schema = table_relation->getSchema();
+		intermediate_table = getIntermediateTable(schema_manager, schema, projectionList);
 		verifySchema(schema, listOfJoinConditions, table_name);
 		Block *block_pointer = mem.getBlock(0);
 		int numOfBlocks = table_relation->getNumOfBlocks();
@@ -457,7 +490,7 @@ bool selectTable(string table_name, SchemaManager &schema_manager, vector<vector
 				Tuple tuple = *itr;
 				bool resultOfCheckingOnConditions = checkIfTupleSatisfiesConditions(tuple,schema,listOfJoinConditions);
 				if (resultOfCheckingOnConditions) {
-					tuple.printTuple();
+					insertIntoIntermediateTable(intermediate_table->getRelationName(), schema_manager, tuple, mem, projectionList);
 				}
 			}
 
@@ -466,10 +499,11 @@ bool selectTable(string table_name, SchemaManager &schema_manager, vector<vector
 	}
 	catch (std::string s) {
 		cout << s;
-		return false;
+		return NULL;
 	}
-	return true;
+	return intermediate_table;
 }
+
 
 
 bool deleteTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition*>> &listOfJoinConditions, MainMemory& mem) {
@@ -509,6 +543,7 @@ bool deleteTable(string table_name, SchemaManager &schema_manager, vector<vector
 	}
 	return true;
 }
+
 
 
 
