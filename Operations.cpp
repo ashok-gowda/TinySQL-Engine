@@ -572,14 +572,14 @@ Relation * sortOperation(vector<Relation*>  vectorOfSubLists, SchemaManager& sch
 	int totalNoofTables = mapOfRelationNamesWithBlocks.size();
 	int noOfTablesComplete = 0;
 	Tuple minimumTuple = mem.getBlock(0)->getTuple(0);
+	int minimumBlockIndex = 0;
+	int minimumTupleIndex = 0;
 	while (noOfTablesComplete < totalNoofTables) {
-		int minimumBlockIndex = -1;
-		int minimumTupleIndex = -1;
 		for (int i = 0; i < mem.getMemorySize() - 1; i++) {
-			if (mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
+			if (memoryBlockIndex.find(i)!=memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
 				Block* block_pointer = mem.getBlock(i);
 				int numberOfTuples = block_pointer->getNumTuples();
-				if (memoryTupleIndex[i] > numberOfTuples) {
+				if (memoryTupleIndex[i] >=numberOfTuples) {
 					Relation* relationOfBlock = memoryBlockIndex[i];
 					int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
 					if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex+1) {
@@ -610,10 +610,13 @@ Relation * sortOperation(vector<Relation*>  vectorOfSubLists, SchemaManager& sch
 
 		//Next first tuple
 		for (int i = 0; i < mem.getMemorySize() - 1; i++) {
-			Relation * relation_pointer = memoryBlockIndex[i];
-			if (mapOfRelationNamesWithBlocks[relation_pointer] != -1) {
+			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
+				Relation * relation_pointer = memoryBlockIndex[i];
 				if (memoryTupleIndex[i] < mem.getBlock(i)->getNumTuples()) {
 					minimumTuple = mem.getBlock(i)->getTuple(memoryTupleIndex[i]);
+					minimumBlockIndex = i;
+					minimumTupleIndex = memoryTupleIndex[i];
+					break;
 				}
 			}
 
@@ -674,14 +677,15 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 	int totalNoofTables = mapOfRelationNamesWithBlocks.size();
 	int noOfTablesComplete = 0;
 	Tuple minimumTuple = mem.getBlock(0)->getTuple(0);
+	int minimumBlockIndex = 0;
+	int minimumTupleIndex = 0;
 	while (noOfTablesComplete < totalNoofTables) {
-		int minimumBlockIndex = -1;
-		int minimumTupleIndex = -1;
+		
 		for (int i = 0; i < mem.getMemorySize() - 1; i++) {
-			if (mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
+			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
 				Block* block_pointer = mem.getBlock(i);
 				int numberOfTuples = block_pointer->getNumTuples();
-				if (memoryTupleIndex[i] > numberOfTuples) {
+				if (memoryTupleIndex[i] >=numberOfTuples) {
 					Relation* relationOfBlock = memoryBlockIndex[i];
 					int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
 					if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex+1) {
@@ -703,10 +707,10 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 			}
 		}
 		for (int i = 0; i < mem.getMemorySize() - 1; i++) {
-			if (mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
+			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
 				Block* block_pointer = mem.getBlock(i);
 				int numberOfTuples = block_pointer->getNumTuples();
-				if (memoryTupleIndex[i] > numberOfTuples) {
+				if (memoryTupleIndex[i] >=numberOfTuples) {
 					Relation* relationOfBlock = memoryBlockIndex[i];
 					int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
 					if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex+1) {
@@ -723,7 +727,7 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 				while (compareEquality(minimumTuple, block_pointer->getTuple(memoryTupleIndex[i]), schema, fieldName) == true) {
 					int tupleIndex = memoryTupleIndex[i];
 					memoryTupleIndex.at(i) = tupleIndex + 1;
-					if (memoryTupleIndex[i] > numberOfTuples) {
+					if (memoryTupleIndex[i] >= numberOfTuples) {
 						Relation* relationOfBlock = memoryBlockIndex[i];
 						int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
 						if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex+1) {
@@ -751,9 +755,12 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 		//Next first tuple
 		for (int i = 0; i < mem.getMemorySize() - 1; i++) {
 			Relation * relation_pointer = memoryBlockIndex[i];
-			if (mapOfRelationNamesWithBlocks[relation_pointer] != -1) {
+			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[relation_pointer] != -1) {
 				if (memoryTupleIndex[i] < mem.getBlock(i)->getNumTuples()) {
 					minimumTuple = mem.getBlock(i)->getTuple(memoryTupleIndex[i]);
+					minimumBlockIndex = i;
+					minimumTupleIndex = memoryTupleIndex[i];
+					break;
 				}
 			}
 
