@@ -548,7 +548,7 @@ Relation * sortOperation(vector<Relation*>  vectorOfSubLists, SchemaManager& sch
 		string relName = (*itr)->getRelationName();
 		mapOfRelationNamesWithBlocks.insert(make_pair(*itr,0));
 		memoryBlockIndex.insert(make_pair(counter,*itr));
-		memoryTupleIndex.insert(counter, 0);
+		memoryTupleIndex.insert(make_pair(counter, 0));
 		(*itr)->getBlock(0,counter);
 		++counter;
 	}
@@ -591,17 +591,18 @@ Relation * sortOperation(vector<Relation*>  vectorOfSubLists, SchemaManager& sch
 			resultant_block_pointer->clear();
 		}
 		resultant_block_pointer->appendTuple(minimumTuple);
-		memoryTupleIndex.at(minimumBlockIndex) = minimumTupleIndex+1;
+		memoryTupleIndex.at(minimumBlockIndex) = minimumTupleIndex + 1;
 
 		//Next first tuple
-		for (int i = 0; i < mem.getMemorySize()-1; i++) {
+		for (int i = 0; i < mem.getMemorySize() - 1; i++) {
 			Relation * relation_pointer = memoryBlockIndex[i];
 			if (mapOfRelationNamesWithBlocks[relation_pointer] != -1) {
 				if (memoryTupleIndex[i] < mem.getBlock(i)->getNumTuples()) {
 					minimumTuple = mem.getBlock(i)->getTuple(memoryTupleIndex[i]);
+				}
 			}
+
 		}
-		
 	}
 		if (!resultant_block_pointer->isEmpty()) {
 			sorted_table->setBlock(relation_block_index++, mem.getMemorySize() - 1);
