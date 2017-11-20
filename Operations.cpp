@@ -5,6 +5,7 @@ std::ofstream fout;
 
 int tableIndex = 0;
 std::string baseName = "Intermediate_table_";
+
 string getIntermediateTableName()
 {
 	char relationNum[10];
@@ -328,7 +329,7 @@ void mergeSortTuples(vector<Tuple>& listOfTuples, vector<OperandOperator*>& attr
 {
 	vector<Tuple> list1, list2;
 	int i;
-	for (i = 0; i < (listOfTuples.size()/2); i++)
+	for (i = 0; i < ((listOfTuples.size())/2); i++)
 		list1.push_back(listOfTuples[i]);
 	for (; i < listOfTuples.size(); i++)
 		list2.push_back(listOfTuples[i]);
@@ -336,8 +337,95 @@ void mergeSortTuples(vector<Tuple>& listOfTuples, vector<OperandOperator*>& attr
 	mergeSortTuples(list2, attributesList, schema);
 	mergeTuples(list1, list2, listOfTuples, attributesList, schema);
 }
+bool tupleLeftToProcess(MainMemory& mem, int* count, int sizeOfSubList)
+{
+	for (int i = 0; i < sizeOfSubList; i++)
+	{
+		if (count[i] < mem.getBlock(i)->getNumTuples())
+			return true;
+	}
+	return false;
+}
 
-vector<Relation*> sortSubList(Relation* relationPtr, int sizeOfSubList, vector<OperandOperator*>& attributesList, MainMemory& mem, bool& success)
+int getLeastBlock(map<Tuple*, int>& tuples, vector<OperandOperator*>& attributesList, Schema& schema)
+{
+	for (vector<OperandOperator*>::iterator attribIter = attributesList.begin(); attribIter != attributesList.end(); attribIter++)
+	{
+		map<Tuple*, int>::iterator tupleIter = tuples.begin();
+		Field minValue;
+		string attribName = (*attribIter)->getName();
+		if (schema.getFieldType(attribName) == STR20)
+			minValue.str = tupleIter->first->getField(attribName).str;
+		else
+			minValue.integer = tupleIter->first->getField(attribName).integer;
+		bool changedFlag = false;
+		map<Tuple*, int>::iterator minValueIter;
+		for (; tupleIter != tuples.end(); tupleIter++)
+		{
+			if (schema.getFieldType(attribName) == STR20)
+			{
+				string val1 = *(minValue.str);
+				string val2 = *((*tupleIter).first->getField(attribName).str);
+				if (strcmp(val1.c_str(), val2.c_str()) > 0)
+				{
+					minValue.str = (*tupleIter).first->getField(attribName).str;
+					minValueIter = tupleIter;
+					changedFlag = true;
+				}
+			}
+			else
+			{
+				int val1 = minValue.integer;
+				int val2 = (*tupleIter).first->getField(attribName).integer;
+				if (val1>val2)
+				{
+					minValue.integer = (*tupleIter).first->getField(attribName).integer;
+					minValueIter = tupleIter;
+					changedFlag = true;
+				}
+			}
+		}
+		if (changedFlag)
+			return minValueIter->second;
+	}
+	return tuples.begin()->second;
+}
+
+Relation* mergeSubList(Relation* relationPtr, SchemaManager &schema_manager, int sizeOfSubList, vector<OperandOperator*>& attributesList, MainMemory& mem)
+{
+	Schema schema = relationPtr->getSchema();
+	int count[NUM_OF_BLOCKS_IN_MEMORY];
+	for (int i = 0; i < sizeOfSubList; i++)
+		count[i] = 0;
+	Block* outputBlock = mem.getBlock(NUM_OF_BLOCKS_IN_MEMORY - 1);
+	outputBlock->clear();
+	Relation* outputRelation = createTable(schema_manager, getIntermediateTableName(), schema.getFieldNames(), schema.getFieldTypes());
+	int blockCount = 0;
+	while (tupleLeftToProcess(mem, count, sizeOfSubList))
+	{
+		map<Tuple*,int> tuples;
+		for (int memBlockNumber = 0; memBlockNumber < sizeOfSubList; memBlockNumber++)
+		{
+			Block* blockPtr = mem.getBlock(memBlockNumber);
+			if (count[memBlockNumber] < blockPtr->getNumTuples())
+				tuples.insert(std::make_pair(&(blockPtr->getTuple(count[memBlockNumber])), memBlockNumber));
+		}
+		int minBlockNumber = getLeastBlock(tuples, attributesList, schema);
+		Block* minBlock = mem.getBlock(minBlockNumber);
+		if (!(outputBlock->appendTuple(minBlock->getTuple(count[minBlockNumber]))))
+		{
+			outputRelation->setBlock(blockCount++, NUM_OF_BLOCKS_IN_MEMORY - 1);
+			outputBlock->clear();
+			outputBlock->appendTuple(minBlock->getTuple(count[minBlockNumber]));
+			count[minBlockNumber]++;
+		}
+	}
+	outputRelation->setBlock(blockCount, NUM_OF_BLOCKS_IN_MEMORY - 1);
+	outputBlock->clear();
+	return outputRelation;
+}
+
+vector<Relation*> sortSubList(Relation* relationPtr, SchemaManager &schema_manager, int sizeOfSubList, vector<OperandOperator*>& attributesList, MainMemory& mem, bool& success)
 {
 	Schema schema = relationPtr->getSchema();
 	vector<Relation*> subLists;
@@ -362,7 +450,21 @@ vector<Relation*> sortSubList(Relation* relationPtr, int sizeOfSubList, vector<O
 			mergeSortTuples(listOfTuples, attributesList, schema);
 			blockPtr->setTuples(listOfTuples);
 		}
-		//mergeSubLists(mem, sizeOfSubList, relationPtr);
+		subLists.push_back(mergeSubList(relationPtr, schema_manager, sizeOfSubList, attributesList, mem));
+	}
+	if (blocksCount > pow(sizeOfSubList, 2))
+	{
+		int remaining = blocksCount - pow(sizeOfSubList, 2);
+		for (int j = 0; j < remaining; j++)
+		{
+			Block *blockPtr = mem.getBlock(j);
+			blockPtr->clear();
+			relationPtr->getBlock(sizeOfSubList*sizeOfSubList + j, j);
+			vector<Tuple>listOfTuples = blockPtr->getTuples();
+			mergeSortTuples(listOfTuples, attributesList, schema);
+			blockPtr->setTuples(listOfTuples);
+		}
+		subLists.push_back(mergeSubList(relationPtr, schema_manager, remaining, attributesList, mem));
 	}
 	return subLists;
 }
