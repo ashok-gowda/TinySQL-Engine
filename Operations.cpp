@@ -566,7 +566,7 @@ Relation * sortOperation(vector<Relation*>  vectorOfSubLists, SchemaManager& sch
 				if (memoryTupleIndex[i] > numberOfTuples) {
 					Relation* relationOfBlock = memoryBlockIndex[i];
 					int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
-					if (relationOfBlock->getNumOfBlocks() < diskBlockIndex) {
+					if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex+1) {
 						mapOfRelationNamesWithBlocks.at(relationOfBlock) = -1;
 						++noOfTablesComplete;
 						continue;
@@ -668,7 +668,7 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 				if (memoryTupleIndex[i] > numberOfTuples) {
 					Relation* relationOfBlock = memoryBlockIndex[i];
 					int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
-					if (relationOfBlock->getNumOfBlocks() < diskBlockIndex) {
+					if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex+1) {
 						mapOfRelationNamesWithBlocks.at(relationOfBlock) = -1;
 						++noOfTablesComplete;
 						continue;
@@ -693,7 +693,7 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 				if (memoryTupleIndex[i] > numberOfTuples) {
 					Relation* relationOfBlock = memoryBlockIndex[i];
 					int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
-					if (relationOfBlock->getNumOfBlocks() < diskBlockIndex) {
+					if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex+1) {
 						mapOfRelationNamesWithBlocks.at(relationOfBlock) = -1;
 						++noOfTablesComplete;
 						continue;
@@ -710,7 +710,7 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 					if (memoryTupleIndex[i] > numberOfTuples) {
 						Relation* relationOfBlock = memoryBlockIndex[i];
 						int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
-						if (relationOfBlock->getNumOfBlocks() < diskBlockIndex) {
+						if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex+1) {
 							mapOfRelationNamesWithBlocks.at(relationOfBlock) = -1;
 							++noOfTablesComplete;
 							break;
@@ -718,6 +718,7 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 						else {
 							mapOfRelationNamesWithBlocks.at(relationOfBlock) = diskBlockIndex + 1;
 							relationOfBlock->getBlock(mapOfRelationNamesWithBlocks[relationOfBlock], i);
+							numberOfTuples = block_pointer->getNumTuples();
 							memoryTupleIndex.at(i) = 0;
 						}
 					}
@@ -731,10 +732,6 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 		}
 		resultant_block_pointer->appendTuple(minimumTuple);
 		memoryTupleIndex.at(minimumBlockIndex) = minimumTupleIndex + 1;
-		for (int i = 0; i < mem.getMemorySize() - 1; i++) {
-			if (mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
-			}
-		}
 		//Next first tuple
 		for (int i = 0; i < mem.getMemorySize() - 1; i++) {
 			Relation * relation_pointer = memoryBlockIndex[i];
