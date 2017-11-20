@@ -547,7 +547,7 @@ Relation * sortOperation(vector<Relation*>  vectorOfSubLists, SchemaManager& sch
 		string relName = (*itr)->getRelationName();
 		mapOfRelationNamesWithBlocks.insert(make_pair(*itr,0));
 		memoryBlockIndex.insert(make_pair(counter,*itr));
-		memoryTupleIndex.insert(counter, 0);
+		memoryTupleIndex.insert(make_pair(counter, 0));
 		(*itr)->getBlock(0,counter);
 		++counter;
 	}
