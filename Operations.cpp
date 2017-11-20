@@ -287,7 +287,7 @@ void mergeTuples(vector<Tuple>& list1, vector<Tuple>& list2, vector<Tuple>& merg
 				string val1 = *(t1.getField((*operIter)->getName()).str);
 				string val2 = *(t2.getField((*operIter)->getName()).str);
 				int compareVal = strcmp(val1.c_str(), val2.c_str());
-				if (compareVal < 0)
+				if (compareVal <= 0)
 				{
 					mergeList.push_back(t1);
 					i++;
@@ -304,7 +304,7 @@ void mergeTuples(vector<Tuple>& list1, vector<Tuple>& list2, vector<Tuple>& merg
 			{
 				int val1 = t1.getField((*operIter)->getName()).integer;
 				int val2 = t2.getField((*operIter)->getName()).integer;
-				if (val1 < val2)
+				if (val1 <= val2)
 				{
 					mergeList.push_back(t1);
 					i++;
@@ -320,9 +320,9 @@ void mergeTuples(vector<Tuple>& list1, vector<Tuple>& list2, vector<Tuple>& merg
 		}
 	}
 	while (i < list1.size())
-		mergeList.push_back(list1[i]);
+		mergeList.push_back(list1[i++]);
 	while (j < list2.size())
-		mergeList.push_back(list2[j]);
+		mergeList.push_back(list2[j++]);
 }
 
 void mergeSortTuples(vector<Tuple>& listOfTuples, vector<OperandOperator*>& attributesList, Schema& schema)
@@ -331,11 +331,14 @@ void mergeSortTuples(vector<Tuple>& listOfTuples, vector<OperandOperator*>& attr
 	int i;
 	for (i = 0; i < ((listOfTuples.size())/2); i++)
 		list1.push_back(listOfTuples[i]);
-	for (; i < listOfTuples.size(); i++)
+	for (i= ((listOfTuples.size()) / 2); i < listOfTuples.size(); i++)
 		list2.push_back(listOfTuples[i]);
-	mergeSortTuples(list1, attributesList, schema);
-	mergeSortTuples(list2, attributesList, schema);
-	mergeTuples(list1, list2, listOfTuples, attributesList, schema);
+	if (list1.size() > 0 && list2.size() > 0)
+	{
+		mergeSortTuples(list1, attributesList, schema);
+		mergeSortTuples(list2, attributesList, schema);
+		mergeTuples(list1, list2, listOfTuples, attributesList, schema);
+	}
 }
 bool tupleLeftToProcess(MainMemory& mem, int* count, int sizeOfSubList)
 {
@@ -347,48 +350,48 @@ bool tupleLeftToProcess(MainMemory& mem, int* count, int sizeOfSubList)
 	return false;
 }
 
-int getLeastBlock(map<Tuple*, int>& tuples, vector<OperandOperator*>& attributesList, Schema& schema)
+int getLeastBlock(vector<Tuple>& tuples, vector<int>& blockNum, vector<OperandOperator*>& attributesList, Schema& schema)
 {
 	for (vector<OperandOperator*>::iterator attribIter = attributesList.begin(); attribIter != attributesList.end(); attribIter++)
 	{
-		map<Tuple*, int>::iterator tupleIter = tuples.begin();
+		int tupleCount = 0;
 		Field minValue;
 		string attribName = (*attribIter)->getName();
 		if (schema.getFieldType(attribName) == STR20)
-			minValue.str = tupleIter->first->getField(attribName).str;
+			minValue.str = tuples[tupleCount].getField(attribName).str;
 		else
-			minValue.integer = tupleIter->first->getField(attribName).integer;
+			minValue.integer = tuples[tupleCount].getField(attribName).integer;
 		bool changedFlag = false;
-		map<Tuple*, int>::iterator minValueIter;
-		for (; tupleIter != tuples.end(); tupleIter++)
+		int minValueBlockIndex;
+		for (; tupleCount < tuples.size(); tupleCount++)
 		{
 			if (schema.getFieldType(attribName) == STR20)
 			{
 				string val1 = *(minValue.str);
-				string val2 = *((*tupleIter).first->getField(attribName).str);
+				string val2 = *(tuples[tupleCount].getField(attribName).str);
 				if (strcmp(val1.c_str(), val2.c_str()) > 0)
 				{
-					minValue.str = (*tupleIter).first->getField(attribName).str;
-					minValueIter = tupleIter;
+					minValue.str = tuples[tupleCount].getField(attribName).str;
+					minValueBlockIndex = tupleCount;
 					changedFlag = true;
 				}
 			}
 			else
 			{
 				int val1 = minValue.integer;
-				int val2 = (*tupleIter).first->getField(attribName).integer;
+				int val2 = tuples[tupleCount].getField(attribName).integer;
 				if (val1>val2)
 				{
-					minValue.integer = (*tupleIter).first->getField(attribName).integer;
-					minValueIter = tupleIter;
+					minValue.integer = tuples[tupleCount].getField(attribName).integer;
+					minValueBlockIndex = tupleCount;
 					changedFlag = true;
 				}
 			}
 		}
 		if (changedFlag)
-			return minValueIter->second;
+			return blockNum[minValueBlockIndex];
 	}
-	return tuples.begin()->second;
+	return blockNum[0];
 }
 
 Relation* mergeSubList(Relation* relationPtr, SchemaManager &schema_manager, int sizeOfSubList, vector<OperandOperator*>& attributesList, MainMemory& mem)
@@ -403,22 +406,26 @@ Relation* mergeSubList(Relation* relationPtr, SchemaManager &schema_manager, int
 	int blockCount = 0;
 	while (tupleLeftToProcess(mem, count, sizeOfSubList))
 	{
-		map<Tuple*,int> tuples;
+		vector<Tuple> tuples;
+		vector<int> blockNumbers;
 		for (int memBlockNumber = 0; memBlockNumber < sizeOfSubList; memBlockNumber++)
 		{
 			Block* blockPtr = mem.getBlock(memBlockNumber);
 			if (count[memBlockNumber] < blockPtr->getNumTuples())
-				tuples.insert(std::make_pair(&(blockPtr->getTuple(count[memBlockNumber])), memBlockNumber));
+			{
+				tuples.push_back(blockPtr->getTuple(count[memBlockNumber]));
+				blockNumbers.push_back(memBlockNumber);
+			}
 		}
-		int minBlockNumber = getLeastBlock(tuples, attributesList, schema);
+		int minBlockNumber = getLeastBlock(tuples, blockNumbers, attributesList, schema);
 		Block* minBlock = mem.getBlock(minBlockNumber);
-		if (!(outputBlock->appendTuple(minBlock->getTuple(count[minBlockNumber]))))
+		if (outputBlock->isFull())
 		{
 			outputRelation->setBlock(blockCount++, NUM_OF_BLOCKS_IN_MEMORY - 1);
 			outputBlock->clear();
-			outputBlock->appendTuple(minBlock->getTuple(count[minBlockNumber]));
-			count[minBlockNumber]++;
 		}
+		outputBlock->appendTuple(minBlock->getTuple(count[minBlockNumber]));
+		count[minBlockNumber]++;
 	}
 	outputRelation->setBlock(blockCount, NUM_OF_BLOCKS_IN_MEMORY - 1);
 	outputBlock->clear();
@@ -452,20 +459,21 @@ vector<Relation*> sortSubList(Relation* relationPtr, SchemaManager &schema_manag
 		}
 		subLists.push_back(mergeSubList(relationPtr, schema_manager, sizeOfSubList, attributesList, mem));
 	}
-	if (blocksCount > pow(sizeOfSubList, 2))
+	if((blocksCount%sizeOfSubList)!=0)
 	{
-		int remaining = blocksCount - pow(sizeOfSubList, 2);
-		for (int j = 0; j < remaining; j++)
+		for (int j = 0; j < blocksCount%sizeOfSubList; j++)
 		{
 			Block *blockPtr = mem.getBlock(j);
 			blockPtr->clear();
-			relationPtr->getBlock(sizeOfSubList*sizeOfSubList + j, j);
+			int blockIndex = (blocksCount / sizeOfSubList)*sizeOfSubList + j;
+			relationPtr->getBlock(blockIndex, j);
 			vector<Tuple>listOfTuples = blockPtr->getTuples();
 			mergeSortTuples(listOfTuples, attributesList, schema);
 			blockPtr->setTuples(listOfTuples);
 		}
-		subLists.push_back(mergeSubList(relationPtr, schema_manager, remaining, attributesList, mem));
+		subLists.push_back(mergeSubList(relationPtr, schema_manager, blocksCount%sizeOfSubList, attributesList, mem));
 	}
+	success = true;
 	return subLists;
 }
 
@@ -477,6 +485,14 @@ Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<v
 			throw "Given relation with " + table_name + " Does not exist";
 		}
 		Schema schema = table_relation->getSchema();
+		if (projectionList.empty()) {
+			vector<string> fieldNames = schema.getFieldNames();
+			for (vector<string>::iterator iter = fieldNames.begin(); iter != fieldNames.end(); iter++)
+			{
+				OperandOperator* obj = new OperandOperator((*iter), kOperandOperatorType::VARIABLE, table_name);
+				projectionList.push_back(obj);
+			}
+		}
 		intermediate_table = getIntermediateTable(schema_manager, schema, projectionList);
 		verifySchema(schema, listOfJoinConditions, table_name);
 		Block *block_pointer = mem.getBlock(0);
