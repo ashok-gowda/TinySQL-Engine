@@ -466,6 +466,7 @@ vector<Relation*> sortSubList(Relation* relationPtr, SchemaManager &schema_manag
 		}
 		subLists.push_back(mergeSubList(relationPtr, schema_manager, remaining, attributesList, mem));
 	}
+	success = true;
 	return subLists;
 }
 
