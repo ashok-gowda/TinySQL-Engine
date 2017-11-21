@@ -537,7 +537,7 @@ bool compareTuple(Tuple& a, Tuple&b, Schema &schema, vector<string>fieldName) {
 			if (a.getField(*itr).integer > b.getField(*itr).integer) {
 				return true;
 			}
-			else {
+			else if(a.getField(*itr).integer < b.getField(*itr).integer) {
 				return false;
 			}
 		}
@@ -699,7 +699,7 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 	int minimumTupleIndex = 0;
 	while (noOfTablesComplete < totalNoofTables) {
 
-		for (int i = 0; i < mem.getMemorySize() - 1; i++) {
+		for (int i = 0; i < totalNoofTables; i++) {
 			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
 				Block* block_pointer = mem.getBlock(i);
 				int numberOfTuples = block_pointer->getNumTuples();
@@ -724,7 +724,7 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 				}
 			}
 		}
-		for (int i = 0; i < mem.getMemorySize() - 1; i++) {
+		for (int i = 0; i <totalNoofTables; i++) {
 			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
 				Block* block_pointer = mem.getBlock(i);
 				int numberOfTuples = block_pointer->getNumTuples();
@@ -769,37 +769,35 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 			resultant_block_pointer->clear();
 		}
 		resultant_block_pointer->appendTuple(minimumTuple);
-		memoryTupleIndex.at(minimumBlockIndex) = minimumTupleIndex + 1;
+		minimumTuple.printTuple();
 		//Next first tuple
-		for (int i = 0; i < mem.getMemorySize() - 1; i++) {
-			Relation * relation_pointer = memoryBlockIndex[i];
-			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[relation_pointer] != -1) {
+		for (int i = 0; i < totalNoofTables; i++) {
+			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
 				if (memoryTupleIndex[i] < mem.getBlock(i)->getNumTuples()) {
 					minimumTuple = mem.getBlock(i)->getTuple(memoryTupleIndex[i]);
 					minimumBlockIndex = i;
 					minimumTupleIndex = memoryTupleIndex[i];
 					break;
 				}
-			}
-			else if (memoryTupleIndex[i] >= mem.getBlock(i)->getNumTuples()) {
-				Relation* relationOfBlock = memoryBlockIndex[i];
-				int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
-				if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex + 1) {
-					mapOfRelationNamesWithBlocks.at(relationOfBlock) = -1;
-					++noOfTablesComplete;
-					continue;
+				else if (memoryTupleIndex[i] >= mem.getBlock(i)->getNumTuples()) {
+					Relation* relationOfBlock = memoryBlockIndex[i];
+					int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
+					if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex + 1) {
+						mapOfRelationNamesWithBlocks.at(relationOfBlock) = -1;
+						++noOfTablesComplete;
+						continue;
+					}
+					else {
+						mapOfRelationNamesWithBlocks.at(relationOfBlock) = diskBlockIndex + 1;
+						relationOfBlock->getBlock(mapOfRelationNamesWithBlocks[relationOfBlock], i);
+						memoryTupleIndex.at(i) = 0;
+						minimumTuple = mem.getBlock(i)->getTuple(memoryTupleIndex[i]);
+						minimumBlockIndex = i;
+						minimumTupleIndex = memoryTupleIndex[i];
+						break;
+					}
 				}
-				else {
-					mapOfRelationNamesWithBlocks.at(relationOfBlock) = diskBlockIndex + 1;
-					relationOfBlock->getBlock(mapOfRelationNamesWithBlocks[relationOfBlock], i);
-					memoryTupleIndex.at(i) = 0;
-					minimumTuple = mem.getBlock(i)->getTuple(memoryTupleIndex[i]);
-					minimumBlockIndex = i;
-					minimumTupleIndex = memoryTupleIndex[i];
-					break;
-				}
 			}
-
 		}
 	}
 	if (!resultant_block_pointer->isEmpty()) {
