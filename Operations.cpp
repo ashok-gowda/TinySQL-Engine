@@ -287,7 +287,7 @@ void mergeTuples(vector<Tuple>& list1, vector<Tuple>& list2, vector<Tuple>& merg
 				string val1 = *(t1.getField((*operIter)->getName()).str);
 				string val2 = *(t2.getField((*operIter)->getName()).str);
 				int compareVal = strcmp(val1.c_str(), val2.c_str());
-				if (compareVal <= 0)
+				if (compareVal < 0 || ((operIter+1)==attributesList.end() && compareVal<=0))
 				{
 					mergeList.push_back(t1);
 					i++;
@@ -304,7 +304,7 @@ void mergeTuples(vector<Tuple>& list1, vector<Tuple>& list2, vector<Tuple>& merg
 			{
 				int val1 = t1.getField((*operIter)->getName()).integer;
 				int val2 = t2.getField((*operIter)->getName()).integer;
-				if (val1 <= val2)
+				if (val1 < val2 || ((operIter + 1) == attributesList.end() && val1 <= val2))
 				{
 					mergeList.push_back(t1);
 					i++;
@@ -352,46 +352,77 @@ bool tupleLeftToProcess(MainMemory& mem, int* count, int sizeOfSubList)
 
 int getLeastBlock(vector<Tuple>& tuples, vector<int>& blockNum, vector<OperandOperator*>& attributesList, Schema& schema)
 {
+	int markTuple[NUM_OF_BLOCKS_IN_MEMORY-1];
+	for (int i = 0; i < NUM_OF_BLOCKS_IN_MEMORY - 1; i++)
+		markTuple[i] = 0;
 	for (vector<OperandOperator*>::iterator attribIter = attributesList.begin(); attribIter != attributesList.end(); attribIter++)
 	{
 		int tupleCount = 0;
 		Field minValue;
 		string attribName = (*attribIter)->getName();
+		for (tupleCount = 0; tupleCount < tuples.size(); tupleCount++)
+		{
+			if (!markTuple[tupleCount])
+				break;
+		}
 		if (schema.getFieldType(attribName) == STR20)
 			minValue.str = tuples[tupleCount].getField(attribName).str;
 		else
 			minValue.integer = tuples[tupleCount].getField(attribName).integer;
 		bool changedFlag = false;
-		int minValueBlockIndex;
+		int minValueBlockIndex=0;
 		for (; tupleCount < tuples.size(); tupleCount++)
 		{
-			if (schema.getFieldType(attribName) == STR20)
+			if (!markTuple[tupleCount])
 			{
-				string val1 = *(minValue.str);
-				string val2 = *(tuples[tupleCount].getField(attribName).str);
-				if (strcmp(val1.c_str(), val2.c_str()) > 0)
+				if (schema.getFieldType(attribName) == STR20)
 				{
-					minValue.str = tuples[tupleCount].getField(attribName).str;
-					minValueBlockIndex = tupleCount;
-					changedFlag = true;
+					string val1 = *(minValue.str);
+					string val2 = *(tuples[tupleCount].getField(attribName).str);
+					if (strcmp(val1.c_str(), val2.c_str()) > 0)
+					{
+						minValue.str = tuples[tupleCount].getField(attribName).str;
+						markTuple[minValueBlockIndex] = -1;
+						minValueBlockIndex = tupleCount;
+						changedFlag = true;
+					}
+					else if (strcmp(val1.c_str(), val2.c_str()) < 0)
+						markTuple[tupleCount] = -1;
+					else
+					{
+						if ((attribIter + 1) != attributesList.end())
+							changedFlag = false;
+					}
 				}
-			}
-			else
-			{
-				int val1 = minValue.integer;
-				int val2 = tuples[tupleCount].getField(attribName).integer;
-				if (val1>val2)
+				else
 				{
-					minValue.integer = tuples[tupleCount].getField(attribName).integer;
-					minValueBlockIndex = tupleCount;
-					changedFlag = true;
+					int val1 = minValue.integer;
+					int val2 = tuples[tupleCount].getField(attribName).integer;
+					if (val1 > val2)
+					{
+						minValue.integer = tuples[tupleCount].getField(attribName).integer;
+						markTuple[minValueBlockIndex] = -1;
+						minValueBlockIndex = tupleCount;
+						changedFlag = true;
+					}
+					else if (val1 < val2)
+						markTuple[tupleCount] = -1;
+					else
+					{
+						if ((attribIter + 1) != attributesList.end())
+							changedFlag = false;
+					}
 				}
 			}
 		}
 		if (changedFlag)
 			return blockNum[minValueBlockIndex];
 	}
-	return blockNum[0];
+	for (int tupleCount = 0; tupleCount < tuples.size(); tupleCount++)
+	{
+		if (!markTuple[tupleCount])
+			return blockNum[tupleCount];
+	}
 }
 
 Relation* mergeSubList(Relation* relationPtr, SchemaManager &schema_manager, int sizeOfSubList, vector<OperandOperator*>& attributesList, MainMemory& mem)
