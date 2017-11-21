@@ -40,8 +40,9 @@ Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<v
 
 bool deleteTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition*>> &listOfJoinConditions, MainMemory& mem);
 
+Relation* cartesianProductOnePass(vector<Relation*>&  tables, SchemaManager& schema_manager, MainMemory& mem);
 
-
+Relation* cartesianProductOnePass(vector<string>&  tablesNames, SchemaManager& schema_manager, MainMemory& mem);
 
 
 
