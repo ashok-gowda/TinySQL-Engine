@@ -806,8 +806,23 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 	}
 	return duplicate_removal;
 }
+Relation * createSchema(vector<Relation*> subListsOfTable1, vector<Relation*> subListsOfTable2, vector<JoinCondition*> joinConditions) {
+	vector<Relation*>::iterator iteratorForSubLists;
+	vector<JoinCondition*>::iterator iteratorForjoinConditions;
+	Relation * firstTupleOfSubListTable1 = subListsOfTable1.front();
+	Schema schemaOfTable1 = firstTupleOfSubListTable1->getSchema();
+	Relation * firstTupleOfSubListTable2 = subListsOfTable2.front();
+	Schema schemaOfTable2 = firstTupleOfSubListTable2->getSchema();
+	return NULL;
+
+}
 
 
+Relation * joinTables(vector<Relation*> subListsOfTable1, vector<Relation*> subListsOfTable2, 
+	SchemaManager &schema_manager,MainMemory &mem, vector<JoinCondition*> joinConditions) {
+	Relation * joinedTable = NULL;
+	return joinedTable;
+}
 
 
 bool deleteTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition*>> &listOfJoinConditions, MainMemory& mem) {
