@@ -699,7 +699,7 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 	int minimumTupleIndex = 0;
 	while (noOfTablesComplete < totalNoofTables) {
 		
-		for (int i = 0; i < mem.getMemorySize() - 1; i++) {
+		for (int i = 0; i < totalNoofTables; i++) {
 			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
 				Block* block_pointer = mem.getBlock(i);
 				int numberOfTuples = block_pointer->getNumTuples();
@@ -724,7 +724,7 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 				}
 			}
 		}
-		for (int i = 0; i < mem.getMemorySize() - 1; i++) {
+		for (int i = 0; i < totalNoofTables; i++) {
 			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
 				Block* block_pointer = mem.getBlock(i);
 				int numberOfTuples = block_pointer->getNumTuples();
@@ -771,7 +771,7 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 		resultant_block_pointer->appendTuple(minimumTuple);
 		memoryTupleIndex.at(minimumBlockIndex) = minimumTupleIndex + 1;
 		//Next first tuple
-		for (int i = 0; i < mem.getMemorySize() - 1; i++) {
+		for (int i = 0; i < totalNoofTables; i++) {
 			Relation * relation_pointer = memoryBlockIndex[i];
 			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[relation_pointer] != -1) {
 				if (memoryTupleIndex[i] < mem.getBlock(i)->getNumTuples()) {
@@ -851,5 +851,153 @@ bool deleteTable(string table_name, SchemaManager &schema_manager, vector<vector
 }
 
 
+Relation* createProduct(Relation* smallRelation, Relation* largeRelation, int relationNumberInMemory, SchemaManager& schema_manager, MainMemory& mem)
+{
+	Relation* table1 = smallRelation;
+	Relation* table2 = largeRelation;
+	int memBlockNumber;
+	for (memBlockNumber = 0; memBlockNumber < table1->getNumOfBlocks(); memBlockNumber++)
+	{
+		Block* memBlock = mem.getBlock(memBlockNumber);
+		memBlock->clear();
+		table1->getBlock(memBlockNumber, memBlockNumber);
+	}
+	Block* outputBlock = mem.getBlock(NUM_OF_BLOCKS_IN_MEMORY - 1);
+	outputBlock->clear();
+	Schema schema1 = table1->getSchema();
+	Schema schema2 = table2->getSchema();
 
 
+	vector<string> fieldNames1 = schema1.getFieldNames();
+	vector<string> fieldNames2 = schema2.getFieldNames();
+	vector<string> mergedFieldNames;
+	vector<FIELD_TYPE> fieldTypes1 = schema1.getFieldTypes();
+	vector<FIELD_TYPE> fieldTypes2 = schema2.getFieldTypes();
+	vector<FIELD_TYPE> mergedFieldTypes;
+
+
+	if (relationNumberInMemory == 0)
+	{
+		mergedFieldNames = fieldNames1;
+		mergedFieldNames.insert(mergedFieldNames.end(), fieldNames2.begin(), fieldNames2.end());
+		mergedFieldTypes = fieldTypes1;
+		mergedFieldTypes.insert(mergedFieldTypes.end(), fieldTypes2.begin(), fieldTypes2.end());
+	}
+	else
+	{
+		mergedFieldNames = fieldNames2;
+		mergedFieldNames.insert(mergedFieldNames.end(), fieldNames1.begin(), fieldNames1.end());
+		mergedFieldTypes = fieldTypes2;
+		mergedFieldTypes.insert(mergedFieldTypes.end(), fieldTypes1.begin(), fieldTypes1.end());
+	}
+
+
+	Relation* mergedRelation = createTable(schema_manager, getIntermediateTableName(), mergedFieldNames, mergedFieldTypes);
+	int blockCount = 0;
+	for (int i = 0; i < table1->getNumOfBlocks(); i++)
+	{
+		Block* block1 = mem.getBlock(i);
+		for (int j = 0; j < table2->getNumOfBlocks(); j++)
+		{
+			Block* block2 = mem.getBlock(NUM_OF_BLOCKS_IN_MEMORY - 2);
+			block2->clear();
+			table2->getBlock(j, NUM_OF_BLOCKS_IN_MEMORY - 2);
+			for (int k = 0; k < block1->getNumTuples(); k++)
+			{
+				Tuple t1 = block1->getTuple(k);
+				for (int l = 0; l < block2->getNumTuples(); l++)
+				{
+					Tuple t2 = block2->getTuple(l);
+					vector<Field> fieldValues1, fieldValues2, mergedFieldValues;
+					int m;
+					for (m = 0; m < t1.getNumOfFields(); m++)
+						fieldValues1.push_back(t1.getField(m));
+					for (m = 0; m < t2.getNumOfFields(); m++)
+						fieldValues2.push_back(t2.getField(m));
+					if (relationNumberInMemory == 0)
+					{
+						mergedFieldValues = fieldValues1;
+						mergedFieldValues.insert(mergedFieldValues.end(), fieldValues2.begin(), fieldValues2.end());
+					}
+					else
+					{
+						mergedFieldValues = fieldValues2;
+						mergedFieldValues.insert(mergedFieldValues.end(), fieldValues1.begin(), fieldValues1.end());
+					}
+					Tuple mergedTuple = mergedRelation->createTuple();
+					for (int iter = 0; iter < mergedFieldValues.size(); iter++)
+					{
+						if (mergedFieldTypes[iter] == STR20)
+							mergedTuple.setField(iter, *(mergedFieldValues[iter].str));
+						else if (mergedFieldTypes[iter] == INT)
+							mergedTuple.setField(iter, mergedFieldValues[iter].integer);
+					}
+					if (outputBlock->isFull())
+					{
+						mergedRelation->setBlock(blockCount++, NUM_OF_BLOCKS_IN_MEMORY - 1);
+						outputBlock->clear();
+					}
+					outputBlock->appendTuple(mergedTuple);				
+				}
+			}
+		}
+	}
+	if(!(outputBlock->isEmpty()))
+		mergedRelation->setBlock(blockCount, NUM_OF_BLOCKS_IN_MEMORY - 1);
+	return mergedRelation;
+}
+
+
+Relation* cartesianProductOnePass(vector<Relation*>&  tables, SchemaManager& schema_manager, MainMemory& mem)
+{
+	if (tables.size() == 1)
+	{
+		return tables[0];
+	}
+	int numBlocks1 = tables[0]->getNumOfBlocks();
+	int numBlocks2 = tables[1]->getNumOfBlocks();
+	Relation* smallRelation, *largeRelation, *mergedRelation;
+	int relationNumberInMemory;
+	if (numBlocks1 < NUM_OF_BLOCKS_IN_MEMORY - 1)
+	{
+		smallRelation = tables[0];
+		largeRelation = tables[1];
+		relationNumberInMemory = 0;
+	}
+	else if (numBlocks2 < NUM_OF_BLOCKS_IN_MEMORY - 1)
+	{
+		smallRelation = tables[1];
+		largeRelation = tables[0];
+		relationNumberInMemory = 1;
+	}
+	else
+		return NULL;
+	mergedRelation = createProduct(smallRelation, largeRelation, relationNumberInMemory, schema_manager, mem);
+	vector<Relation*> mergeVector;
+	mergeVector.push_back(mergedRelation);
+	vector<Relation*>::iterator iter = tables.begin();
+	iter += 2;
+	while (iter != tables.end())
+		mergeVector.push_back(*iter);
+	return cartesianProductOnePass(mergeVector, schema_manager, mem);
+}
+
+Relation* cartesianProductOnePass(vector<string>&  tablesNames, SchemaManager& schema_manager, MainMemory& mem)
+{
+	vector<Relation*> relationPtrs;
+	try
+	{
+		for (vector<string>::iterator tableIter = tablesNames.begin(); tableIter != tablesNames.end(); tableIter++)
+		{
+			Relation* ptr = schema_manager.getRelation((*tableIter));
+			if (!ptr)
+				throw "Given relation with " + (*tableIter) + " Does not exist";
+			relationPtrs.push_back(ptr);
+		}
+		return cartesianProductOnePass(relationPtrs, schema_manager, mem);
+	}
+	catch (std::string s) {
+		cout << s;
+		return NULL;
+	}
+}

@@ -33,4 +33,4 @@ INSERT INTO course (sid, homework, project, exam, grade) VALUES (4, 100, 101, 98
 INSERT INTO course (sid, homework, project, exam, grade) VALUES (4, 100, 101, 98, "J")
 INSERT INTO course (sid, homework, project, exam, grade) VALUES (4, 100, 101, 98, "P")
 INSERT INTO course (sid, homework, project, exam, grade) VALUES (4, 100, 101, 98, "B")
-SELECT sid,homework,grade FROM course WHERE sid=4 ORDER BY homework
+SELECT DISTINCT sid,homework,grade FROM course WHERE sid=4 ORDER BY homework
