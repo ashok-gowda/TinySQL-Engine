@@ -994,3 +994,88 @@ Relation* cartesianProductOnePass(vector<string>&  tablesNames, SchemaManager& s
 		return NULL;
 	}
 }
+
+Relation * onePassOrdering(Relation * table_name, MainMemory& mem, SchemaManager& schema_manager, vector<OperandOperator*>& attributesList) {
+	if (table_name->getNumOfBlocks() > mem.getMemorySize() - 1) {
+		cout << "Error in doing One pass as table blocks do not fit into memory";
+		return NULL;
+	}
+	Relation *sortedTable = schema_manager.createRelation(getIntermediateTableName(), table_name->getSchema());
+	if (sortedTable == NULL) {
+		cout << "Error in creating of resultant table";
+			return NULL;
+	}
+	table_name->getBlocks(0, 0, table_name->getNumOfBlocks());
+	vector<Tuple> listOfTuples;
+	for (int i = 0; i < table_name->getNumOfBlocks(); i++) {
+		Block * block_pointer = mem.getBlock(0);
+		vector<Tuple> listOfTuplesOfBlock = block_pointer->getTuples();
+		listOfTuples.insert(listOfTuples.end(), listOfTuplesOfBlock.begin(), listOfTuplesOfBlock.end());
+	}
+	mergeSortTuples(listOfTuples, attributesList, table_name->getSchema());
+	Block * resultant_block = mem.getBlock(mem.getMemorySize() - 1);
+	resultant_block->clear();
+	vector<Tuple>::iterator itr;
+	int relation_block_index = 0;
+	for (itr = listOfTuples.begin(); itr != listOfTuples.end(); itr++) {
+		if (resultant_block->isFull()) {
+			sortedTable->setBlock(relation_block_index++, mem.getMemorySize() - 1);
+			resultant_block->clear();
+		}
+		resultant_block->appendTuple(*itr);
+	}
+	if (!resultant_block->isEmpty()) {
+		sortedTable->setBlock(relation_block_index++, mem.getMemorySize() - 1);
+		resultant_block->clear();
+	}
+	return sortedTable;
+}
+
+Relation * onePassDistinct(Relation * table_name, MainMemory& mem, SchemaManager& schema_manager, vector<OperandOperator*>& attributesList) {
+	if (table_name->getNumOfBlocks() > mem.getMemorySize() - 1) {
+		cout << "Error in doing One pass as table blocks do not fit into memory";
+		return NULL;
+	}
+	Relation *distinctTable = schema_manager.createRelation(getIntermediateTableName(), table_name->getSchema());
+	if (distinctTable == NULL) {
+		cout << "Error in creating of resultant table";
+		return NULL;
+	}
+	table_name->getBlocks(0, 0, table_name->getNumOfBlocks());
+	vector<Tuple> listOfTuples;
+	for (int i = 0; i < table_name->getNumOfBlocks(); i++) {
+		Block * block_pointer = mem.getBlock(0);
+		vector<Tuple> listOfTuplesOfBlock = block_pointer->getTuples();
+		listOfTuples.insert(listOfTuples.end(), listOfTuplesOfBlock.begin(), listOfTuplesOfBlock.end());
+	}
+	vector<string> fieldnames;
+	vector<OperandOperator*>::iterator iteratorForOperandOperator;
+	for (iteratorForOperandOperator = attributesList.begin(); iteratorForOperandOperator != attributesList.end(); iteratorForOperandOperator++) {
+		fieldnames.push_back((*iteratorForOperandOperator)->getName());
+	}
+	mergeSortTuples(listOfTuples, attributesList, table_name->getSchema());
+	Block * resultant_block = mem.getBlock(mem.getMemorySize() - 1);
+	resultant_block->clear();
+	vector<Tuple>::iterator itr;
+	int relation_block_index = 0;
+	itr = listOfTuples.begin();
+	while(itr != listOfTuples.end()){
+		if (resultant_block->isFull()) {
+			distinctTable->setBlock(relation_block_index++, mem.getMemorySize() - 1);
+			resultant_block->clear();
+		}
+		resultant_block->appendTuple(*itr);
+		Tuple distinctTuple = *itr;
+		itr++;
+		while (itr != listOfTuples.end()) {
+			if (compareEquality(distinctTuple, *itr, table_name->getSchema(), fieldnames) == true) {
+				itr++;
+			}
+		}
+	}
+	if (!resultant_block->isEmpty()) {
+		distinctTable->setBlock(relation_block_index++, mem.getMemorySize() - 1);
+		resultant_block->clear();
+	}
+	return distinctTable;
+}

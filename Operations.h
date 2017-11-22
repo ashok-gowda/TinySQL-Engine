@@ -49,6 +49,10 @@ Relation* cartesianProductOnePass(vector<string>&  tablesNames, SchemaManager& s
 Relation * joinTables(vector<Relation*> subListsOfTable1, vector<Relation*> subListsOfTable2,
 	SchemaManager &schema_manager, MainMemory &mem, vector<vector<JoinCondition*>> joinConditions);
 
+Relation * onePassDistinct(Relation * table_name, MainMemory& mem, SchemaManager& schema_manager, vector<OperandOperator*>& attributesList);
+
+Relation * onePassOrdering(Relation * table_name, MainMemory& mem, SchemaManager& schema_manager, vector<OperandOperator*>& attributesList);
+
 
 
 
