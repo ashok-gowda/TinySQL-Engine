@@ -271,6 +271,31 @@ void insertIntoIntermediateTable(string table_name, SchemaManager& schema_manage
 	insertTable(table_name, schema_manager, fieldsToBePassed, mem);
 }
 
+bool compareTuple(Tuple& a, Tuple&b, Schema &schema, vector<string>fieldName) {
+	vector<string>::iterator itr;
+	for (itr = fieldName.begin(); itr != fieldName.end(); itr++) {
+		if (schema.getFieldType(*itr) == STR20) {
+			int value = strcmp((*a.getField(*itr).str).c_str(), (*b.getField(*itr).str).c_str());
+			if (value > 0) {
+				return true;
+			}
+			else if (value<0) {
+				return false;
+			}
+
+		}
+		else if (schema.getFieldType(*itr) == INT) {
+			if (a.getField(*itr).integer > b.getField(*itr).integer) {
+				return true;
+			}
+			else if (a.getField(*itr).integer < b.getField(*itr).integer) {
+				return false;
+			}
+		}
+	}
+	return false;
+}
+
 
 void mergeTuples(vector<Tuple>& list1, vector<Tuple>& list2, vector<Tuple>& mergeList, vector<OperandOperator*>& attributesList, Schema& schema)
 {
@@ -352,77 +377,20 @@ bool tupleLeftToProcess(MainMemory& mem, int* count, int sizeOfSubList)
 
 int getLeastBlock(vector<Tuple>& tuples, vector<int>& blockNum, vector<OperandOperator*>& attributesList, Schema& schema)
 {
-	int markTuple[NUM_OF_BLOCKS_IN_MEMORY-1];
-	for (int i = 0; i < NUM_OF_BLOCKS_IN_MEMORY - 1; i++)
-		markTuple[i] = 0;
-	for (vector<OperandOperator*>::iterator attribIter = attributesList.begin(); attribIter != attributesList.end(); attribIter++)
+	Tuple minTuple = tuples[0];
+	int minTupleCount = 0;
+	vector<string> fieldNames;
+	for (vector<OperandOperator*>::iterator iter = attributesList.begin(); iter != attributesList.end(); iter++)
+		fieldNames.push_back((*iter)->getName());
+	for (int tupleCount = 1; tupleCount < tuples.size(); tupleCount++)
 	{
-		int tupleCount = 0;
-		Field minValue;
-		string attribName = (*attribIter)->getName();
-		for (tupleCount = 0; tupleCount < tuples.size(); tupleCount++)
+		if (compareTuple(minTuple, tuples[tupleCount], schema, fieldNames))
 		{
-			if (!markTuple[tupleCount])
-				break;
+			minTupleCount = tupleCount;
+			minTuple = tuples[tupleCount];
 		}
-		if (schema.getFieldType(attribName) == STR20)
-			minValue.str = tuples[tupleCount].getField(attribName).str;
-		else
-			minValue.integer = tuples[tupleCount].getField(attribName).integer;
-		bool changedFlag = false;
-		int minValueBlockIndex=0;
-		for (; tupleCount < tuples.size(); tupleCount++)
-		{
-			if (!markTuple[tupleCount])
-			{
-				if (schema.getFieldType(attribName) == STR20)
-				{
-					string val1 = *(minValue.str);
-					string val2 = *(tuples[tupleCount].getField(attribName).str);
-					if (strcmp(val1.c_str(), val2.c_str()) > 0)
-					{
-						minValue.str = tuples[tupleCount].getField(attribName).str;
-						markTuple[minValueBlockIndex] = -1;
-						minValueBlockIndex = tupleCount;
-						changedFlag = true;
-					}
-					else if (strcmp(val1.c_str(), val2.c_str()) < 0)
-						markTuple[tupleCount] = -1;
-					else
-					{
-						if ((attribIter + 1) != attributesList.end())
-							changedFlag = false;
-					}
-				}
-				else
-				{
-					int val1 = minValue.integer;
-					int val2 = tuples[tupleCount].getField(attribName).integer;
-					if (val1 > val2)
-					{
-						minValue.integer = tuples[tupleCount].getField(attribName).integer;
-						markTuple[minValueBlockIndex] = -1;
-						minValueBlockIndex = tupleCount;
-						changedFlag = true;
-					}
-					else if (val1 < val2)
-						markTuple[tupleCount] = -1;
-					else
-					{
-						if ((attribIter + 1) != attributesList.end())
-							changedFlag = false;
-					}
-				}
-			}
-		}
-		if (changedFlag)
-			return blockNum[minValueBlockIndex];
 	}
-	for (int tupleCount = 0; tupleCount < tuples.size(); tupleCount++)
-	{
-		if (!markTuple[tupleCount])
-			return blockNum[tupleCount];
-	}
+	return blockNum[minTupleCount];
 }
 
 Relation* mergeSubList(Relation* relationPtr, SchemaManager &schema_manager, int sizeOfSubList, vector<OperandOperator*>& attributesList, MainMemory& mem)
@@ -551,30 +519,7 @@ Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<v
 	return intermediate_table;
 }
 
-bool compareTuple(Tuple& a, Tuple&b, Schema &schema, vector<string>fieldName) {
-	vector<string>::iterator itr;
-	for (itr = fieldName.begin(); itr != fieldName.end(); itr++) {
-		if (schema.getFieldType(*itr) == STR20) {
-			int value = strcmp((*a.getField(*itr).str).c_str(), (*b.getField(*itr).str).c_str());
-			if (value > 0) {
-				return true;
-			}
-			else if (value<0) {
-				return false;
-			}
 
-		}
-		else if (schema.getFieldType(*itr) == INT) {
-			if (a.getField(*itr).integer > b.getField(*itr).integer) {
-				return true;
-			}
-			else {
-				return false;
-			}
-		}
-	}
-	return false;
-}
 
 Relation * sortOperation(vector<Relation*>  vectorOfSubLists, SchemaManager& schema_manager, MainMemory& mem, vector<string> fieldName) {
 	vector<Relation *>::iterator itr;
@@ -730,7 +675,7 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 	int minimumTupleIndex = 0;
 	while (noOfTablesComplete < totalNoofTables) {
 
-		for (int i = 0; i < mem.getMemorySize() - 1; i++) {
+		for (int i = 0; i < totalNoofTables; i++) {
 			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
 				Block* block_pointer = mem.getBlock(i);
 				int numberOfTuples = block_pointer->getNumTuples();
@@ -755,7 +700,7 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 				}
 			}
 		}
-		for (int i = 0; i < mem.getMemorySize() - 1; i++) {
+		for (int i = 0; i <totalNoofTables; i++) {
 			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
 				Block* block_pointer = mem.getBlock(i);
 				int numberOfTuples = block_pointer->getNumTuples();
@@ -800,37 +745,35 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 			resultant_block_pointer->clear();
 		}
 		resultant_block_pointer->appendTuple(minimumTuple);
-		memoryTupleIndex.at(minimumBlockIndex) = minimumTupleIndex + 1;
+		minimumTuple.printTuple();
 		//Next first tuple
-		for (int i = 0; i < mem.getMemorySize() - 1; i++) {
-			Relation * relation_pointer = memoryBlockIndex[i];
-			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[relation_pointer] != -1) {
+		for (int i = 0; i < totalNoofTables; i++) {
+			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
 				if (memoryTupleIndex[i] < mem.getBlock(i)->getNumTuples()) {
 					minimumTuple = mem.getBlock(i)->getTuple(memoryTupleIndex[i]);
 					minimumBlockIndex = i;
 					minimumTupleIndex = memoryTupleIndex[i];
 					break;
 				}
-			}
-			else if (memoryTupleIndex[i] >= mem.getBlock(i)->getNumTuples()) {
-				Relation* relationOfBlock = memoryBlockIndex[i];
-				int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
-				if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex + 1) {
-					mapOfRelationNamesWithBlocks.at(relationOfBlock) = -1;
-					++noOfTablesComplete;
-					continue;
+				else if (memoryTupleIndex[i] >= mem.getBlock(i)->getNumTuples()) {
+					Relation* relationOfBlock = memoryBlockIndex[i];
+					int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
+					if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex + 1) {
+						mapOfRelationNamesWithBlocks.at(relationOfBlock) = -1;
+						++noOfTablesComplete;
+						continue;
+					}
+					else {
+						mapOfRelationNamesWithBlocks.at(relationOfBlock) = diskBlockIndex + 1;
+						relationOfBlock->getBlock(mapOfRelationNamesWithBlocks[relationOfBlock], i);
+						memoryTupleIndex.at(i) = 0;
+						minimumTuple = mem.getBlock(i)->getTuple(memoryTupleIndex[i]);
+						minimumBlockIndex = i;
+						minimumTupleIndex = memoryTupleIndex[i];
+						break;
+					}
 				}
-				else {
-					mapOfRelationNamesWithBlocks.at(relationOfBlock) = diskBlockIndex + 1;
-					relationOfBlock->getBlock(mapOfRelationNamesWithBlocks[relationOfBlock], i);
-					memoryTupleIndex.at(i) = 0;
-					minimumTuple = mem.getBlock(i)->getTuple(memoryTupleIndex[i]);
-					minimumBlockIndex = i;
-					minimumTupleIndex = memoryTupleIndex[i];
-					break;
-				}
 			}
-
 		}
 	}
 	if (!resultant_block_pointer->isEmpty()) {
@@ -882,7 +825,7 @@ bool deleteTable(string table_name, SchemaManager &schema_manager, vector<vector
 }
 
 
-Relation* createProduct(Relation* smallRelation, Relation* largeRelation, int relationNumberInMemory, SchemaManager& schema_manager, MainMemory& mem)
+Relation* createProduct(Relation* smallRelation, Relation* largeRelation, int relationNumberInMemory, SchemaManager& schema_manager, MainMemory& mem, vector<vector<JoinCondition*>> &listOfJoinConditions)
 {
 	Relation* table1 = smallRelation;
 	Relation* table2 = largeRelation;
@@ -979,7 +922,7 @@ Relation* createProduct(Relation* smallRelation, Relation* largeRelation, int re
 }
 
 
-Relation* cartesianProductOnePass(vector<Relation*>&  tables, SchemaManager& schema_manager, MainMemory& mem)
+Relation* cartesianProductOnePass(vector<Relation*>&  tables, SchemaManager& schema_manager, MainMemory& mem, vector<vector<JoinCondition*>> &listOfJoinConditions)
 {
 	if (tables.size() == 1)
 	{
@@ -1010,10 +953,10 @@ Relation* cartesianProductOnePass(vector<Relation*>&  tables, SchemaManager& sch
 	iter += 2;
 	while (iter != tables.end())
 		mergeVector.push_back(*iter);
-	return cartesianProductOnePass(mergeVector, schema_manager, mem);
+	return cartesianProductOnePass(mergeVector, schema_manager, mem, listOfJoinConditions);
 }
 
-Relation* cartesianProductOnePass(vector<string>&  tablesNames, SchemaManager& schema_manager, MainMemory& mem)
+Relation* cartesianProductOnePass(vector<string>&  tablesNames, SchemaManager& schema_manager, MainMemory& mem, vector<vector<JoinCondition*>> &listOfJoinConditions)
 {
 	vector<Relation*> relationPtrs;
 	try
@@ -1025,7 +968,7 @@ Relation* cartesianProductOnePass(vector<string>&  tablesNames, SchemaManager& s
 				throw "Given relation with " + (*tableIter) + " Does not exist";
 			relationPtrs.push_back(ptr);
 		}
-		return cartesianProductOnePass(relationPtrs, schema_manager, mem);
+		return cartesianProductOnePass(relationPtrs, schema_manager, mem, listOfJoinConditions);
 	}
 	catch (std::string s) {
 		cout << s;
