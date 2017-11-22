@@ -46,6 +46,9 @@ Relation* cartesianProductOnePass(vector<Relation*>&  tables, SchemaManager& sch
 
 Relation* cartesianProductOnePass(vector<string>&  tablesNames, SchemaManager& schema_manager, MainMemory& mem);
 
+Relation * joinTables(vector<Relation*> subListsOfTable1, vector<Relation*> subListsOfTable2,
+	SchemaManager &schema_manager, MainMemory &mem, vector<vector<JoinCondition*>> joinConditions);
+
 
 
 
