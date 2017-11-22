@@ -244,28 +244,40 @@ bool checkIfTupleSatisfiesConditions(Tuple& tuple, Schema& schema, vector<vector
 }
 
 
-Relation * getIntermediateTable(SchemaManager &schema_manager, Schema &schema, vector<OperandOperator*> &projectionList) {
+Relation * getIntermediateTable(SchemaManager &schema_manager, Schema &schema, vector<OperandOperator*> &projectionList,string table_name,bool renameSchema) {
 	vector<OperandOperator*>::iterator itr;
 	vector<string> field_names;
 	vector<enum FIELD_TYPE> field_types;
 	for (itr = projectionList.begin(); itr != projectionList.end(); itr++) {
-		field_names.push_back((*itr)->getName());
+		if (!renameSchema) {
+			field_names.push_back((*itr)->getName());
+		}
+		else {
+			field_names.push_back(table_name + "." + (*itr)->getName());
+		}
 		field_types.push_back(schema.getFieldType((*itr)->getName()));
 	}
 	return createTable(schema_manager, getIntermediateTableName(), field_names, field_types);
 }
 
-void insertIntoIntermediateTable(string table_name, SchemaManager& schema_manager, Tuple& tuple, MainMemory& mem, vector<OperandOperator*> &projectionList) {
+void insertIntoIntermediateTable(string table_name, SchemaManager& schema_manager, Tuple& tuple, MainMemory& mem, vector<OperandOperator*> &projectionList, bool renameSchema){
 	vector<OperandOperator*>::iterator itr;
 	map<string, string> fieldsToBePassed;
 	Schema schemaOfOrginalRelation = tuple.getSchema();
 	for (itr = projectionList.begin(); itr != projectionList.end(); itr++) {
-		if (schemaOfOrginalRelation.getFieldType((*itr)->getName()) == STR20) {
-			string fieldValue = *(tuple.getField((*itr)->getName()).str);
-			fieldsToBePassed.insert(make_pair((*itr)->getName(), fieldValue));
+		string fieldName = "";
+		if (!renameSchema) {
+			fieldName = (*itr)->getName();
 		}
 		else {
-			fieldsToBePassed.insert(make_pair((*itr)->getName(), to_string(tuple.getField((*itr)->getName()).integer)));
+			fieldName = table_name + "." + (*itr)->getName();
+		}
+		if (schemaOfOrginalRelation.getFieldType((*itr)->getName()) == STR20) {
+			string fieldValue = *(tuple.getField((*itr)->getName()).str);
+			fieldsToBePassed.insert(make_pair(fieldName, fieldValue));
+		}
+		else {
+			fieldsToBePassed.insert(make_pair(fieldName, to_string(tuple.getField((*itr)->getName()).integer)));
 		}
 	}
 	insertTable(table_name, schema_manager, fieldsToBePassed, mem);
@@ -477,7 +489,7 @@ vector<Relation*> sortSubList(Relation* relationPtr, SchemaManager &schema_manag
 	return subLists;
 }
 
-Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition*>> &listOfJoinConditions, MainMemory& mem, vector<OperandOperator*> &projectionList) {
+Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition*>> &listOfJoinConditions, MainMemory& mem, vector<OperandOperator*> &projectionList,bool renameSchema) {
 	Relation * intermediate_table = NULL;
 	try {
 		Relation *table_relation = schema_manager.getRelation(table_name);
@@ -485,15 +497,15 @@ Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<v
 			throw "Given relation with " + table_name + " Does not exist";
 		}
 		Schema schema = table_relation->getSchema();
-		if (projectionList.empty()) {
-			vector<string> fieldNames = schema.getFieldNames();
-			for (vector<string>::iterator iter = fieldNames.begin(); iter != fieldNames.end(); iter++)
-			{
-				OperandOperator* obj = new OperandOperator((*iter), kOperandOperatorType::VARIABLE, table_name);
-				projectionList.push_back(obj);
+			if (projectionList.empty()) {
+				vector<string> fieldNames = schema.getFieldNames();
+				for (vector<string>::iterator iter = fieldNames.begin(); iter != fieldNames.end(); iter++)
+				{
+					OperandOperator* obj = new OperandOperator((*iter), kOperandOperatorType::VARIABLE, table_name);
+					projectionList.push_back(obj);
+				}
 			}
-		}
-		intermediate_table = getIntermediateTable(schema_manager, schema, projectionList);
+		intermediate_table = getIntermediateTable(schema_manager, schema, projectionList,table_name,renameSchema);
 		verifySchema(schema, listOfJoinConditions, table_name);
 		Block *block_pointer = mem.getBlock(0);
 		int numOfBlocks = table_relation->getNumOfBlocks();
@@ -506,7 +518,7 @@ Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<v
 				Tuple tuple = *itr;
 				bool resultOfCheckingOnConditions = checkIfTupleSatisfiesConditions(tuple, schema, listOfJoinConditions);
 				if (resultOfCheckingOnConditions) {
-					insertIntoIntermediateTable(intermediate_table->getRelationName(), schema_manager, tuple, mem, projectionList);
+					insertIntoIntermediateTable(intermediate_table->getRelationName(), schema_manager, tuple, mem, projectionList,renameSchema);
 				}
 			}
 
