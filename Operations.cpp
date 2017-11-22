@@ -488,7 +488,7 @@ vector<Relation*> sortSubList(Relation* relationPtr, SchemaManager &schema_manag
 	return subLists;
 }
 
-Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition*>> &listOfJoinConditions, MainMemory& mem, vector<OperandOperator*> &projectionList,bool renameSchema) {
+Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition*>> &listOfJoinConditions, MainMemory& mem, vector<OperandOperator*> &projectionList, bool renameSchema) {
 	Relation * intermediate_table = NULL;
 	try {
 		Relation *table_relation = schema_manager.getRelation(table_name);
@@ -938,7 +938,9 @@ Relation* createProduct(Relation* smallRelation, Relation* largeRelation, int re
 						mergedRelation->setBlock(blockCount++, NUM_OF_BLOCKS_IN_MEMORY - 1);
 						outputBlock->clear();
 					}
-					outputBlock->appendTuple(mergedTuple);
+					bool resultOfCheckingOnConditions = checkIfTupleSatisfiesConditions(mergedTuple, mergedRelation->getSchema(), listOfJoinConditions);
+					if(resultOfCheckingOnConditions)
+						outputBlock->appendTuple(mergedTuple);
 				}
 			}
 		}
@@ -951,10 +953,6 @@ Relation* createProduct(Relation* smallRelation, Relation* largeRelation, int re
 
 Relation* cartesianProductOnePass(vector<Relation*>&  tables, SchemaManager& schema_manager, MainMemory& mem, vector<vector<JoinCondition*>> &listOfJoinConditions)
 {
-	if (tables.size() == 1)
-	{
-		return tables[0];
-	}
 	int numBlocks1 = tables[0]->getNumOfBlocks();
 	int numBlocks2 = tables[1]->getNumOfBlocks();
 	Relation* smallRelation, *largeRelation, *mergedRelation;
@@ -974,13 +972,7 @@ Relation* cartesianProductOnePass(vector<Relation*>&  tables, SchemaManager& sch
 	else
 		return NULL;
 	mergedRelation = createProduct(smallRelation, largeRelation, relationNumberInMemory, schema_manager, mem);
-	vector<Relation*> mergeVector;
-	mergeVector.push_back(mergedRelation);
-	vector<Relation*>::iterator iter = tables.begin();
-	iter += 2;
-	while (iter != tables.end())
-		mergeVector.push_back(*iter);
-	return cartesianProductOnePass(mergeVector, schema_manager, mem, listOfJoinConditions);
+	return mergedRelation;
 }
 
 Relation* cartesianProductOnePass(vector<string>&  tablesNames, SchemaManager& schema_manager, MainMemory& mem, vector<vector<JoinCondition*>> &listOfJoinConditions)
