@@ -1028,7 +1028,7 @@ Relation * onePassOrdering(Relation * table_name, MainMemory& mem, SchemaManager
 	table_name->getBlocks(0, 0, table_name->getNumOfBlocks());
 	vector<Tuple> listOfTuples;
 	for (int i = 0; i < table_name->getNumOfBlocks(); i++) {
-		Block * block_pointer = mem.getBlock(0);
+		Block * block_pointer = mem.getBlock(i);
 		vector<Tuple> listOfTuplesOfBlock = block_pointer->getTuples();
 		listOfTuples.insert(listOfTuples.end(), listOfTuplesOfBlock.begin(), listOfTuplesOfBlock.end());
 	}
@@ -1064,7 +1064,7 @@ Relation * onePassDistinct(Relation * table_name, MainMemory& mem, SchemaManager
 	table_name->getBlocks(0, 0, table_name->getNumOfBlocks());
 	vector<Tuple> listOfTuples;
 	for (int i = 0; i < table_name->getNumOfBlocks(); i++) {
-		Block * block_pointer = mem.getBlock(0);
+		Block * block_pointer = mem.getBlock(i);
 		vector<Tuple> listOfTuplesOfBlock = block_pointer->getTuples();
 		listOfTuples.insert(listOfTuples.end(), listOfTuplesOfBlock.begin(), listOfTuplesOfBlock.end());
 	}
@@ -1090,6 +1090,9 @@ Relation * onePassDistinct(Relation * table_name, MainMemory& mem, SchemaManager
 		while (itr != listOfTuples.end()) {
 			if (compareEquality(distinctTuple, *itr, table_name->getSchema(), fieldnames) == true) {
 				itr++;
+			}
+			else {
+				break;
 			}
 		}
 	}
