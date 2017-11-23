@@ -94,7 +94,6 @@ bool insertTable(string tableName, SchemaManager& schema_manager, std::map<strin
 			}
 		}
 		appendTupleToRelation(relation, mem, 0, t);
-		relation->printRelation();
 	}
 	catch (std::string s) {
 		cerr << s;
@@ -260,7 +259,7 @@ Relation * getIntermediateTable(SchemaManager &schema_manager, Schema &schema, v
 	return createTable(schema_manager, getIntermediateTableName(), field_names, field_types);
 }
 
-void insertIntoIntermediateTable(string table_name, SchemaManager& schema_manager, Tuple& tuple, MainMemory& mem, vector<OperandOperator*> &projectionList, bool renameSchema){
+void insertIntoIntermediateTable(string table_name, string originalTableName, SchemaManager& schema_manager, Tuple& tuple, MainMemory& mem, vector<OperandOperator*> &projectionList, bool renameSchema){
 	vector<OperandOperator*>::iterator itr;
 	map<string, string> fieldsToBePassed;
 	Schema schemaOfOrginalRelation = tuple.getSchema();
@@ -270,7 +269,7 @@ void insertIntoIntermediateTable(string table_name, SchemaManager& schema_manage
 			fieldName = (*itr)->getName();
 		}
 		else {
-			fieldName = table_name + "." + (*itr)->getName();
+			fieldName = originalTableName + "." + (*itr)->getName();
 		}
 		if (schemaOfOrginalRelation.getFieldType((*itr)->getName()) == STR20) {
 			string fieldValue = *(tuple.getField((*itr)->getName()).str);
@@ -517,7 +516,7 @@ Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<v
 				Tuple tuple = *itr;
 				bool resultOfCheckingOnConditions = checkIfTupleSatisfiesConditions(tuple, schema, listOfJoinConditions);
 				if (resultOfCheckingOnConditions) {
-					insertIntoIntermediateTable(intermediate_table->getRelationName(), schema_manager, tuple, mem, projectionList,renameSchema);
+					insertIntoIntermediateTable(intermediate_table->getRelationName(), table_name, schema_manager, tuple, mem, projectionList,renameSchema);
 				}
 			}
 
@@ -852,23 +851,16 @@ bool deleteTable(string table_name, SchemaManager &schema_manager, vector<vector
 }
 
 
-Relation* createProduct(Relation* smallRelation, Relation* largeRelation, int relationNumberInMemory, SchemaManager& schema_manager, MainMemory& mem, vector<vector<JoinCondition*>> &listOfJoinConditions)
+Relation* createProduct(Relation* smallRelation, Relation* largeRelation, SchemaManager& schema_manager, MainMemory& mem, vector<vector<JoinCondition*>> &listOfJoinConditions)
 {
 	Relation* table1 = smallRelation;
 	Relation* table2 = largeRelation;
 	int memBlockNumber;
-	for (memBlockNumber = 0; memBlockNumber < table1->getNumOfBlocks(); memBlockNumber++)
-	{
-		Block* memBlock = mem.getBlock(memBlockNumber);
-		memBlock->clear();
-		table1->getBlock(memBlockNumber, memBlockNumber);
-	}
+	int numOfBlocksTable1 = table1->getNumOfBlocks();
 	Block* outputBlock = mem.getBlock(NUM_OF_BLOCKS_IN_MEMORY - 1);
 	outputBlock->clear();
 	Schema schema1 = table1->getSchema();
 	Schema schema2 = table2->getSchema();
-
-
 	vector<string> fieldNames1 = schema1.getFieldNames();
 	vector<string> fieldNames2 = schema2.getFieldNames();
 	vector<string> mergedFieldNames;
@@ -876,71 +868,118 @@ Relation* createProduct(Relation* smallRelation, Relation* largeRelation, int re
 	vector<FIELD_TYPE> fieldTypes2 = schema2.getFieldTypes();
 	vector<FIELD_TYPE> mergedFieldTypes;
 
-
-	if (relationNumberInMemory == 0)
-	{
-		mergedFieldNames = fieldNames1;
-		mergedFieldNames.insert(mergedFieldNames.end(), fieldNames2.begin(), fieldNames2.end());
-		mergedFieldTypes = fieldTypes1;
-		mergedFieldTypes.insert(mergedFieldTypes.end(), fieldTypes2.begin(), fieldTypes2.end());
-	}
-	else
-	{
-		mergedFieldNames = fieldNames2;
-		mergedFieldNames.insert(mergedFieldNames.end(), fieldNames1.begin(), fieldNames1.end());
-		mergedFieldTypes = fieldTypes2;
-		mergedFieldTypes.insert(mergedFieldTypes.end(), fieldTypes1.begin(), fieldTypes1.end());
-	}
-
+	mergedFieldNames = fieldNames1;
+	mergedFieldNames.insert(mergedFieldNames.end(), fieldNames2.begin(), fieldNames2.end());
+	mergedFieldTypes = fieldTypes1;
+	mergedFieldTypes.insert(mergedFieldTypes.end(), fieldTypes2.begin(), fieldTypes2.end());
 
 	Relation* mergedRelation = createTable(schema_manager, getIntermediateTableName(), mergedFieldNames, mergedFieldTypes);
 	int blockCount = 0;
-	for (int i = 0; i < table1->getNumOfBlocks(); i++)
+	for (int iterationCount = 0; iterationCount < numOfBlocksTable1 / (NUM_OF_BLOCKS_IN_MEMORY - 2); iterationCount++)
 	{
-		Block* block1 = mem.getBlock(i);
+		int blocksOfTable1InMemory = NUM_OF_BLOCKS_IN_MEMORY - 2;
+		for (memBlockNumber = 0; memBlockNumber < blocksOfTable1InMemory; memBlockNumber++)
+		{
+			Block* memBlock = mem.getBlock(memBlockNumber);
+			memBlock->clear();
+			table1->getBlock(iterationCount*blocksOfTable1InMemory + memBlockNumber, memBlockNumber);
+		}
+
+		
 		for (int j = 0; j < table2->getNumOfBlocks(); j++)
 		{
 			Block* block2 = mem.getBlock(NUM_OF_BLOCKS_IN_MEMORY - 2);
 			block2->clear();
 			table2->getBlock(j, NUM_OF_BLOCKS_IN_MEMORY - 2);
-			for (int k = 0; k < block1->getNumTuples(); k++)
+			for (int i = 0; i < blocksOfTable1InMemory; i++)
 			{
-				Tuple t1 = block1->getTuple(k);
-				for (int l = 0; l < block2->getNumTuples(); l++)
+				Block* block1 = mem.getBlock(i);
+				for (int k = 0; k < block1->getNumTuples(); k++)
 				{
-					Tuple t2 = block2->getTuple(l);
-					vector<Field> fieldValues1, fieldValues2, mergedFieldValues;
-					int m;
-					for (m = 0; m < t1.getNumOfFields(); m++)
-						fieldValues1.push_back(t1.getField(m));
-					for (m = 0; m < t2.getNumOfFields(); m++)
-						fieldValues2.push_back(t2.getField(m));
-					if (relationNumberInMemory == 0)
+					Tuple t1 = block1->getTuple(k);
+					for (int l = 0; l < block2->getNumTuples(); l++)
 					{
+						Tuple t2 = block2->getTuple(l);
+						vector<Field> fieldValues1, fieldValues2, mergedFieldValues;
+						int m;
+						for (m = 0; m < t1.getNumOfFields(); m++)
+							fieldValues1.push_back(t1.getField(m));
+						for (m = 0; m < t2.getNumOfFields(); m++)
+							fieldValues2.push_back(t2.getField(m));
 						mergedFieldValues = fieldValues1;
 						mergedFieldValues.insert(mergedFieldValues.end(), fieldValues2.begin(), fieldValues2.end());
+						Tuple mergedTuple = mergedRelation->createTuple();
+						for (int iter = 0; iter < mergedFieldValues.size(); iter++)
+						{
+							if (mergedFieldTypes[iter] == STR20)
+								mergedTuple.setField(iter, *(mergedFieldValues[iter].str));
+							else if (mergedFieldTypes[iter] == INT)
+								mergedTuple.setField(iter, mergedFieldValues[iter].integer);
+						}
+						if (outputBlock->isFull())
+						{
+							mergedRelation->setBlock(blockCount++, NUM_OF_BLOCKS_IN_MEMORY - 1);
+							outputBlock->clear();
+						}
+						bool resultOfCheckingOnConditions = checkIfTupleSatisfiesConditions(mergedTuple, mergedRelation->getSchema(), listOfJoinConditions);
+						if (resultOfCheckingOnConditions)
+							outputBlock->appendTuple(mergedTuple);
 					}
-					else
+				}
+			}
+		}
+	}
+	if ((numOfBlocksTable1 % (NUM_OF_BLOCKS_IN_MEMORY - 2)) != 0)
+	{
+		int blocksOfTable1InMemory = numOfBlocksTable1 % (NUM_OF_BLOCKS_IN_MEMORY - 2);
+		for (memBlockNumber = 0; memBlockNumber < blocksOfTable1InMemory; memBlockNumber++)
+		{
+			Block* memBlock = mem.getBlock(memBlockNumber);
+			memBlock->clear();
+			int relationBlockIndex = (numOfBlocksTable1 / (NUM_OF_BLOCKS_IN_MEMORY - 2))*(NUM_OF_BLOCKS_IN_MEMORY - 2) + memBlockNumber;
+			table1->getBlock(relationBlockIndex, memBlockNumber);
+		}
+
+		
+		for (int j = 0; j < table2->getNumOfBlocks(); j++)
+		{
+			Block* block2 = mem.getBlock(NUM_OF_BLOCKS_IN_MEMORY - 2);
+			block2->clear();
+			table2->getBlock(j, NUM_OF_BLOCKS_IN_MEMORY - 2);
+			for (int i = 0; i < blocksOfTable1InMemory; i++)
+			{
+				Block* block1 = mem.getBlock(i);
+				for (int k = 0; k < block1->getNumTuples(); k++)
+				{
+					Tuple t1 = block1->getTuple(k);
+					for (int l = 0; l < block2->getNumTuples(); l++)
 					{
-						mergedFieldValues = fieldValues2;
-						mergedFieldValues.insert(mergedFieldValues.end(), fieldValues1.begin(), fieldValues1.end());
+						Tuple t2 = block2->getTuple(l);
+						vector<Field> fieldValues1, fieldValues2, mergedFieldValues;
+						int m;
+						for (m = 0; m < t1.getNumOfFields(); m++)
+							fieldValues1.push_back(t1.getField(m));
+						for (m = 0; m < t2.getNumOfFields(); m++)
+							fieldValues2.push_back(t2.getField(m));
+						mergedFieldValues = fieldValues1;
+						mergedFieldValues.insert(mergedFieldValues.end(), fieldValues2.begin(), fieldValues2.end());
+						Tuple mergedTuple = mergedRelation->createTuple();
+						for (int iter = 0; iter < mergedFieldValues.size(); iter++)
+						{
+							if (mergedFieldTypes[iter] == STR20)
+								mergedTuple.setField(iter, *(mergedFieldValues[iter].str));
+							else if (mergedFieldTypes[iter] == INT)
+								mergedTuple.setField(iter, mergedFieldValues[iter].integer);
+						}
+						if (outputBlock->isFull())
+						{
+							mergedRelation->setBlock(blockCount++, NUM_OF_BLOCKS_IN_MEMORY - 1);
+							outputBlock->clear();
+						}
+						bool resultOfCheckingOnConditions = checkIfTupleSatisfiesConditions(mergedTuple, mergedRelation->getSchema(), listOfJoinConditions);
+						if (resultOfCheckingOnConditions)
+							outputBlock->appendTuple(mergedTuple);
 					}
-					Tuple mergedTuple = mergedRelation->createTuple();
-					for (int iter = 0; iter < mergedFieldValues.size(); iter++)
-					{
-						if (mergedFieldTypes[iter] == STR20)
-							mergedTuple.setField(iter, *(mergedFieldValues[iter].str));
-						else if (mergedFieldTypes[iter] == INT)
-							mergedTuple.setField(iter, mergedFieldValues[iter].integer);
-					}
-					if (outputBlock->isFull())
-					{
-						mergedRelation->setBlock(blockCount++, NUM_OF_BLOCKS_IN_MEMORY - 1);
-						outputBlock->clear();
-					}
-					bool resultOfCheckingOnConditions = checkIfTupleSatisfiesConditions(mergedTuple, mergedRelation->getSchema(), listOfJoinConditions);
-					if(resultOfCheckingOnConditions)
-						outputBlock->appendTuple(mergedTuple);
 				}
 			}
 		}
@@ -953,26 +992,7 @@ Relation* createProduct(Relation* smallRelation, Relation* largeRelation, int re
 
 Relation* cartesianProductOnePass(vector<Relation*>&  tables, SchemaManager& schema_manager, MainMemory& mem, vector<vector<JoinCondition*>> &listOfJoinConditions)
 {
-	int numBlocks1 = tables[0]->getNumOfBlocks();
-	int numBlocks2 = tables[1]->getNumOfBlocks();
-	Relation* smallRelation, *largeRelation, *mergedRelation;
-	int relationNumberInMemory;
-	if (numBlocks1 < NUM_OF_BLOCKS_IN_MEMORY - 1)
-	{
-		smallRelation = tables[0];
-		largeRelation = tables[1];
-		relationNumberInMemory = 0;
-	}
-	else if (numBlocks2 < NUM_OF_BLOCKS_IN_MEMORY - 1)
-	{
-		smallRelation = tables[1];
-		largeRelation = tables[0];
-		relationNumberInMemory = 1;
-	}
-	else
-		return NULL;
-	mergedRelation = createProduct(smallRelation, largeRelation, relationNumberInMemory, schema_manager, mem);
-	return mergedRelation;
+	return createProduct(tables[0], tables[1], schema_manager, mem, listOfJoinConditions);
 }
 
 Relation* cartesianProductOnePass(vector<string>&  tablesNames, SchemaManager& schema_manager, MainMemory& mem, vector<vector<JoinCondition*>> &listOfJoinConditions)
