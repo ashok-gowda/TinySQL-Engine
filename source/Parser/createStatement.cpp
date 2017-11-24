@@ -37,7 +37,7 @@ bool isAttributeTypeList(std::string line, int& index, parseTree* current)
 	return flag;
 }
 
-void createStatement::parse(std::string line, int& index)
+void createStatement::parse(std::string line, int& index, std::ofstream& fWriteExecute)
 {
 	int counter = index;
 	parseTree* p1 = createNode(NULL, CREATETABLESTATEMENT, "create-table-statement");
@@ -87,5 +87,11 @@ void createStatement::parse(std::string line, int& index)
 		}
 		else
 			deleteNode(p1);
+		if (!tableCheck)
+			fWriteExecute << "Error near 'table' clause\n";
+		if (!attributeListCheck)
+			fWriteExecute << "Error in table attributes list definition\n";
+		if (!finalCheck)
+			fWriteExecute << "Undefined clause in the statement\n";
 	}
 }

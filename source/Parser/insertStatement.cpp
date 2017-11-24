@@ -87,7 +87,7 @@ bool isAttributeList(std::string line, int& index, parseTree* current)
 	return flag;
 }
 
-bool checkInsertTuples(std::string line, int& index, parseTree* current)
+bool checkInsertTuples(std::string line, int& index, parseTree* current, std::ofstream& fWriteExecute)
 {
 	int counter = index;
 	parseTree* p1 = createNode(NULL, INSERTTUPLES, "insert-tuples");
@@ -117,7 +117,7 @@ bool checkInsertTuples(std::string line, int& index, parseTree* current)
 		selectStatement* selectStmtObj = new selectStatement();
 		if (counter != line.size())
 		{
-			selectStmtObj->parse(line, counter);
+			selectStmtObj->parse(line, counter, fWriteExecute);
 			if (selectStmtObj->isValidSyntax())
 			{
 				parseTree* p5 = selectStmtObj->getRoot();
@@ -140,7 +140,7 @@ bool checkInsertTuples(std::string line, int& index, parseTree* current)
 	return flag;
 }
 
-void insertStatement::parse(std::string line, int& index)
+void insertStatement::parse(std::string line, int& index, std::ofstream& fWriteExecute)
 {
 	int counter = index;
 	parseTree* p1 = createNode(NULL, INSERTSTATEMENT, "insert-statement");
@@ -183,7 +183,7 @@ void insertStatement::parse(std::string line, int& index)
 		}
 		while (counter != line.size() && line[counter] != '\n' && isspace(line[counter]))
 			counter++;
-		if (counter != line.size() && checkInsertTuples(line, counter, p1))
+		if (counter != line.size() && checkInsertTuples(line, counter, p1, fWriteExecute))
 			insertTuplesCheck = true;
 		while (counter != line.size() && line[counter] != '\n' && isspace(line[counter]))
 			counter++;
@@ -197,5 +197,13 @@ void insertStatement::parse(std::string line, int& index)
 		}
 		else
 			deleteNode(p1);
+		if (!intoCheck)
+			fWriteExecute << "Missing 'into' clause in statement\n";
+		if (!tableNameCheck)
+			fWriteExecute << "Error in tablename or table columns list\n";
+		if (!insertTuplesCheck)
+			fWriteExecute << "Error in specifying the tuple values to be inserted\n";
+		if (!finalCheck)
+			fWriteExecute << "Undefined clause in insert statement\n";
 	}
 }

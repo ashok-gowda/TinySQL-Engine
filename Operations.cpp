@@ -12,11 +12,11 @@ string getIntermediateTableName()
 	_itoa_s(tableIndex++, relationNum, 10);
 	return baseName + relationNum;
 }
-Relation * createTable(SchemaManager& schema_manager, string relation_name, vector<string> field_names, vector<enum FIELD_TYPE> field_types) {
+Relation * createTable(SchemaManager& schema_manager, string relation_name, vector<string> field_names, vector<enum FIELD_TYPE> field_types, std::ofstream& fwriteExecute) {
 	Schema schema(field_names, field_types);
 	Relation* relation_ptr = schema_manager.createRelation(relation_name, schema);
 	if (relation_ptr == NULL) {
-		fout << "Table with name " << relation_name << " Has failed to be created";
+		fwriteExecute << "Table with name " << relation_name << " Has failed to be created\n\n";
 	}
 	return relation_ptr;
 }
@@ -59,7 +59,7 @@ inline bool isInteger(const std::string & s)
 
 
 
-bool insertTable(string tableName, SchemaManager& schema_manager, std::map<string, string> map_of_attributes, MainMemory& mem) {
+bool insertTable(string tableName, SchemaManager& schema_manager, std::map<string, string> map_of_attributes, MainMemory& mem, std::ofstream& fwriteExecute) {
 	try {
 		Relation * relation = schema_manager.getRelation(tableName);
 		if (relation == NULL) {
@@ -96,7 +96,7 @@ bool insertTable(string tableName, SchemaManager& schema_manager, std::map<strin
 		appendTupleToRelation(relation, mem, 0, t);
 	}
 	catch (std::string s) {
-		cerr << s;
+		fwriteExecute << s <<"\n\n";
 		return false;
 	}
 	return true;
@@ -123,7 +123,7 @@ bool dropTable(string table_name, ofstream &file_output, SchemaManager &schema_m
 		}
 	}
 	catch (std::string s) {
-		cerr << s;
+		file_output << s <<"\n\n";
 		return false;
 	}
 	return true;
@@ -243,7 +243,7 @@ bool checkIfTupleSatisfiesConditions(Tuple& tuple, Schema& schema, vector<vector
 }
 
 
-Relation * getIntermediateTable(SchemaManager &schema_manager, Schema &schema, vector<OperandOperator*> &projectionList,string table_name,bool renameSchema) {
+Relation * getIntermediateTable(SchemaManager &schema_manager, Schema &schema, vector<OperandOperator*> &projectionList,string table_name,bool renameSchema, std::ofstream& fWriteExecute) {
 	vector<OperandOperator*>::iterator itr;
 	vector<string> field_names;
 	vector<enum FIELD_TYPE> field_types;
@@ -256,10 +256,10 @@ Relation * getIntermediateTable(SchemaManager &schema_manager, Schema &schema, v
 		}
 		field_types.push_back(schema.getFieldType((*itr)->getName()));
 	}
-	return createTable(schema_manager, getIntermediateTableName(), field_names, field_types);
+	return createTable(schema_manager, getIntermediateTableName(), field_names, field_types, fWriteExecute);
 }
 
-void insertIntoIntermediateTable(string table_name, string originalTableName, SchemaManager& schema_manager, Tuple& tuple, MainMemory& mem, vector<OperandOperator*> &projectionList, bool renameSchema){
+void insertIntoIntermediateTable(string table_name, string originalTableName, SchemaManager& schema_manager, Tuple& tuple, MainMemory& mem, vector<OperandOperator*> &projectionList, bool renameSchema, std::ofstream& fWriteExecute){
 	vector<OperandOperator*>::iterator itr;
 	map<string, string> fieldsToBePassed;
 	Schema schemaOfOrginalRelation = tuple.getSchema();
@@ -279,7 +279,7 @@ void insertIntoIntermediateTable(string table_name, string originalTableName, Sc
 			fieldsToBePassed.insert(make_pair(fieldName, to_string(tuple.getField((*itr)->getName()).integer)));
 		}
 	}
-	insertTable(table_name, schema_manager, fieldsToBePassed, mem);
+	insertTable(table_name, schema_manager, fieldsToBePassed, mem, fWriteExecute);
 }
 
 bool compareTuple(Tuple& a, Tuple&b, Schema &schema, vector<string>fieldName) {
@@ -404,7 +404,7 @@ int getLeastBlock(vector<Tuple>& tuples, vector<int>& blockNum, vector<OperandOp
 	return blockNum[minTupleCount];
 }
 
-Relation* mergeSubList(Relation* relationPtr, SchemaManager &schema_manager, int sizeOfSubList, vector<OperandOperator*>& attributesList, MainMemory& mem)
+Relation* mergeSubList(Relation* relationPtr, SchemaManager &schema_manager, int sizeOfSubList, vector<OperandOperator*>& attributesList, MainMemory& mem, std::ofstream& fWriteExecute)
 {
 	Schema schema = relationPtr->getSchema();
 	int count[NUM_OF_BLOCKS_IN_MEMORY];
@@ -412,7 +412,7 @@ Relation* mergeSubList(Relation* relationPtr, SchemaManager &schema_manager, int
 		count[i] = 0;
 	Block* outputBlock = mem.getBlock(NUM_OF_BLOCKS_IN_MEMORY - 1);
 	outputBlock->clear();
-	Relation* outputRelation = createTable(schema_manager, getIntermediateTableName(), schema.getFieldNames(), schema.getFieldTypes());
+	Relation* outputRelation = createTable(schema_manager, getIntermediateTableName(), schema.getFieldNames(), schema.getFieldTypes(), fWriteExecute);
 	int blockCount = 0;
 	while (tupleLeftToProcess(mem, count, sizeOfSubList))
 	{
@@ -442,7 +442,7 @@ Relation* mergeSubList(Relation* relationPtr, SchemaManager &schema_manager, int
 	return outputRelation;
 }
 
-vector<Relation*> sortSubList(Relation* relationPtr, SchemaManager &schema_manager, int sizeOfSubList, vector<OperandOperator*>& attributesList, MainMemory& mem, bool& success)
+vector<Relation*> sortSubList(Relation* relationPtr, SchemaManager &schema_manager, int sizeOfSubList, vector<OperandOperator*>& attributesList, MainMemory& mem, bool& success, std::ofstream& fWriteExecute)
 {
 	Schema schema = relationPtr->getSchema();
 	vector<Relation*> subLists;
@@ -467,7 +467,7 @@ vector<Relation*> sortSubList(Relation* relationPtr, SchemaManager &schema_manag
 			mergeSortTuples(listOfTuples, attributesList, schema);
 			blockPtr->setTuples(listOfTuples);
 		}
-		subLists.push_back(mergeSubList(relationPtr, schema_manager, sizeOfSubList, attributesList, mem));
+		subLists.push_back(mergeSubList(relationPtr, schema_manager, sizeOfSubList, attributesList, mem, fWriteExecute));
 	}
 	if ((blocksCount%sizeOfSubList) != 0)
 	{
@@ -481,13 +481,13 @@ vector<Relation*> sortSubList(Relation* relationPtr, SchemaManager &schema_manag
 			mergeSortTuples(listOfTuples, attributesList, schema);
 			blockPtr->setTuples(listOfTuples);
 		}
-		subLists.push_back(mergeSubList(relationPtr, schema_manager, blocksCount%sizeOfSubList, attributesList, mem));
+		subLists.push_back(mergeSubList(relationPtr, schema_manager, blocksCount%sizeOfSubList, attributesList, mem, fWriteExecute));
 	}
 	success = true;
 	return subLists;
 }
 
-Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition*>> &listOfJoinConditions, MainMemory& mem, vector<OperandOperator*> &projectionList, bool renameSchema) {
+Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition*>> &listOfJoinConditions, MainMemory& mem, vector<OperandOperator*> &projectionList, bool renameSchema, std::ofstream& fwriteExecute) {
 	Relation * intermediate_table = NULL;
 	try {
 		Relation *table_relation = schema_manager.getRelation(table_name);
@@ -503,7 +503,7 @@ Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<v
 					projectionList.push_back(obj);
 				}
 			}
-		intermediate_table = getIntermediateTable(schema_manager, schema, projectionList,table_name,renameSchema);
+		intermediate_table = getIntermediateTable(schema_manager, schema, projectionList,table_name,renameSchema, fwriteExecute);
 		verifySchema(schema, listOfJoinConditions, table_name);
 		Block *block_pointer = mem.getBlock(0);
 		int numOfBlocks = table_relation->getNumOfBlocks();
@@ -516,7 +516,7 @@ Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<v
 				Tuple tuple = *itr;
 				bool resultOfCheckingOnConditions = checkIfTupleSatisfiesConditions(tuple, schema, listOfJoinConditions);
 				if (resultOfCheckingOnConditions) {
-					insertIntoIntermediateTable(intermediate_table->getRelationName(), table_name, schema_manager, tuple, mem, projectionList,renameSchema);
+					insertIntoIntermediateTable(intermediate_table->getRelationName(), table_name, schema_manager, tuple, mem, projectionList,renameSchema, fwriteExecute);
 				}
 			}
 
@@ -524,7 +524,7 @@ Relation* selectTable(string table_name, SchemaManager &schema_manager, vector<v
 
 	}
 	catch (std::string s) {
-		cout << s;
+		fwriteExecute << s<<"\n\n";
 		return NULL;
 	}
 	return intermediate_table;
@@ -812,7 +812,7 @@ Relation * joinTables(vector<Relation*> subListsOfTable1, vector<Relation*> subL
 }
 
 
-bool deleteTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition*>> &listOfJoinConditions, MainMemory& mem) {
+bool deleteTable(string table_name, SchemaManager &schema_manager, vector<vector<JoinCondition*>> &listOfJoinConditions, MainMemory& mem, std::ofstream& fwriteExecute) {
 	try {
 		Relation *table_relation = schema_manager.getRelation(table_name);
 		if (table_relation == NULL) {
@@ -844,14 +844,14 @@ bool deleteTable(string table_name, SchemaManager &schema_manager, vector<vector
 
 	}
 	catch (std::string s) {
-		cout << s;
+		fwriteExecute << s<<"\n\n";
 		return false;
 	}
 	return true;
 }
 
 
-Relation* createProduct(Relation* smallRelation, Relation* largeRelation, SchemaManager& schema_manager, MainMemory& mem, vector<vector<JoinCondition*>> &listOfJoinConditions)
+Relation* createProduct(Relation* smallRelation, Relation* largeRelation, SchemaManager& schema_manager, MainMemory& mem, vector<vector<JoinCondition*>> &listOfJoinConditions, std::ofstream& fWriteExecute)
 {
 	Relation* table1 = smallRelation;
 	Relation* table2 = largeRelation;
@@ -873,7 +873,7 @@ Relation* createProduct(Relation* smallRelation, Relation* largeRelation, Schema
 	mergedFieldTypes = fieldTypes1;
 	mergedFieldTypes.insert(mergedFieldTypes.end(), fieldTypes2.begin(), fieldTypes2.end());
 
-	Relation* mergedRelation = createTable(schema_manager, getIntermediateTableName(), mergedFieldNames, mergedFieldTypes);
+	Relation* mergedRelation = createTable(schema_manager, getIntermediateTableName(), mergedFieldNames, mergedFieldTypes, fWriteExecute);
 	int blockCount = 0;
 	for (int iterationCount = 0; iterationCount < numOfBlocksTable1 / (NUM_OF_BLOCKS_IN_MEMORY - 2); iterationCount++)
 	{
@@ -990,12 +990,12 @@ Relation* createProduct(Relation* smallRelation, Relation* largeRelation, Schema
 }
 
 
-Relation* cartesianProductOnePass(vector<Relation*>&  tables, SchemaManager& schema_manager, MainMemory& mem, vector<vector<JoinCondition*>> &listOfJoinConditions)
+Relation* cartesianProductOnePass(vector<Relation*>&  tables, SchemaManager& schema_manager, MainMemory& mem, vector<vector<JoinCondition*>> &listOfJoinConditions, std::ofstream& fWriteExecute)
 {
-	return createProduct(tables[0], tables[1], schema_manager, mem, listOfJoinConditions);
+	return createProduct(tables[0], tables[1], schema_manager, mem, listOfJoinConditions, fWriteExecute);
 }
 
-Relation* cartesianProductOnePass(vector<string>&  tablesNames, SchemaManager& schema_manager, MainMemory& mem, vector<vector<JoinCondition*>> &listOfJoinConditions)
+Relation* cartesianProductOnePass(vector<string>&  tablesNames, SchemaManager& schema_manager, MainMemory& mem, vector<vector<JoinCondition*>> &listOfJoinConditions, std::ofstream& fwriteExecute)
 {
 	vector<Relation*> relationPtrs;
 	try
@@ -1007,22 +1007,22 @@ Relation* cartesianProductOnePass(vector<string>&  tablesNames, SchemaManager& s
 				throw "Given relation with " + (*tableIter) + " Does not exist";
 			relationPtrs.push_back(ptr);
 		}
-		return cartesianProductOnePass(relationPtrs, schema_manager, mem, listOfJoinConditions);
+		return cartesianProductOnePass(relationPtrs, schema_manager, mem, listOfJoinConditions, fwriteExecute);
 	}
 	catch (std::string s) {
-		cout << s;
+		fwriteExecute << s<<"\n\n";
 		return NULL;
 	}
 }
 
-Relation * onePassOrdering(Relation * table_name, MainMemory& mem, SchemaManager& schema_manager, vector<OperandOperator*>& attributesList) {
+Relation * onePassOrdering(Relation * table_name, MainMemory& mem, SchemaManager& schema_manager, vector<OperandOperator*>& attributesList, std::ofstream& fwriteExecute) {
 	if (table_name->getNumOfBlocks() > mem.getMemorySize() - 1) {
-		cout << "Error in doing One pass as table blocks do not fit into memory";
+		fwriteExecute << "Error in doing One pass as table blocks do not fit into memory\n\n";
 		return NULL;
 	}
 	Relation *sortedTable = schema_manager.createRelation(getIntermediateTableName(), table_name->getSchema());
 	if (sortedTable == NULL) {
-		cout << "Error in creating of resultant table";
+		fwriteExecute << "Error in creating of resultant table\n\n";
 			return NULL;
 	}
 	table_name->getBlocks(0, 0, table_name->getNumOfBlocks());
@@ -1051,14 +1051,14 @@ Relation * onePassOrdering(Relation * table_name, MainMemory& mem, SchemaManager
 	return sortedTable;
 }
 
-Relation * onePassDistinct(Relation * table_name, MainMemory& mem, SchemaManager& schema_manager, vector<OperandOperator*>& attributesList) {
+Relation * onePassDistinct(Relation * table_name, MainMemory& mem, SchemaManager& schema_manager, vector<OperandOperator*>& attributesList, std::ofstream& fwriteExecute) {
 	if (table_name->getNumOfBlocks() > mem.getMemorySize() - 1) {
-		cout << "Error in doing One pass as table blocks do not fit into memory";
+		fwriteExecute << "Error in doing One pass as table blocks do not fit into memory\n\n";
 		return NULL;
 	}
 	Relation *distinctTable = schema_manager.createRelation(getIntermediateTableName(), table_name->getSchema());
 	if (distinctTable == NULL) {
-		cout << "Error in creating of resultant table";
+		fwriteExecute << "Error in creating of resultant table\n\n";
 		return NULL;
 	}
 	table_name->getBlocks(0, 0, table_name->getNumOfBlocks());

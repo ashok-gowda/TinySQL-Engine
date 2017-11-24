@@ -1,6 +1,6 @@
 #include "deleteStatement.h"
 
-void deleteStatement::parse(std::string line, int& index)
+void deleteStatement::parse(std::string line, int& index, std::ofstream& fWriteExecute)
 {
 	int counter = index;
 	parseTree* p1 = createNode(NULL, DELETESTATEMENT, "delete-statement");
@@ -40,5 +40,11 @@ void deleteStatement::parse(std::string line, int& index)
 		}
 		else
 			deleteNode(p1);
+		if (!fromCheck)
+			fWriteExecute << "Error near 'from' clause\n";
+		if (!whereCheck)
+			fWriteExecute << "Error near 'where' clause\n";
+		if (!finalSizeCheck)
+			fWriteExecute << "Undefined clause in delete statement\n";
 	}
 }
