@@ -91,7 +91,7 @@ bool checkSelectList(std::string line, int& index, parseTree* current)
 	return flag;
 }
 
-void selectStatement::parse(std::string line, int& index)
+void selectStatement::parse(std::string line, int& index, std::ofstream& fWriteExecute)
 {
 	int counter = index;
 	parseTree* p1 = createNode(NULL, SELECTSTATEMENT, "select-statement");
@@ -147,5 +147,15 @@ void selectStatement::parse(std::string line, int& index)
 		}
 		else
 			deleteNode(p1);
+		if (!selectListCheck)
+			fWriteExecute << "Error in specfying projection attributes near 'select' clause\n";
+		if (!fromCheck)
+			fWriteExecute << "Error near 'from' clause in specifying table list\n";
+		if (!whereCheck)
+			fWriteExecute << "Error near 'where' clause in specifying search conditions\n";
+		if (!orderByCheck)
+			fWriteExecute << "Error near 'order by' clause in specifying order by attributes list\n";
+		if (!finalSizeCheck)
+			fWriteExecute << "Undefined clause in select statememnt\n";
 	}
 }

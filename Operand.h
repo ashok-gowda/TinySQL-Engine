@@ -24,6 +24,10 @@ public:
 	{
 		return name;
 	}
+	void setName(std::string& n)
+	{
+		name = n;
+	}
 	std::string getTableName()
 	{
 		return tableName;

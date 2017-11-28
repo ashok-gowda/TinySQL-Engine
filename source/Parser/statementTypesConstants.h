@@ -1,6 +1,8 @@
 #include <string>
 #include "parseTree.h"
 #include <locale>
+#include <iostream>
+#include <fstream>
 
 #define LETTER 1
 #define DIGIT 2

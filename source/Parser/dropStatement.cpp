@@ -1,6 +1,6 @@
 #include "dropStatement.h"
 
-void dropStatement::parse(std::string line, int& index)
+void dropStatement::parse(std::string line, int& index, std::ofstream& fWriteExecute)
 {
 	int counter = index;
 	parseTree* p1 = createNode(NULL, DROPTABLESTATEMENT, "drop-table-statement");
@@ -30,5 +30,9 @@ void dropStatement::parse(std::string line, int& index)
 		}
 		else
 			deleteNode(p1);
+		if (!statementCheck)
+			fWriteExecute << "Error near 'table' clause\n";
+		if (!finalCheck)
+			fWriteExecute << "Undefined clause in statement\n";
 	}
 }

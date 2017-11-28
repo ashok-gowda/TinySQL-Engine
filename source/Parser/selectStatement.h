@@ -8,7 +8,7 @@ public:
 		syntaxValid = false;
 		root = NULL;
 	}
-	void parse(std::string line, int& index);
+	void parse(std::string line, int& index, std::ofstream& fWriteExecute);
 	parseTree* getRoot()
 	{
 		return root;

@@ -6,7 +6,7 @@
 class statement
 {
 public:
-	virtual void parse(std::string line, int& index) { }
+	virtual void parse(std::string line, int& index, std::ofstream& fWriteExecute) { }
 	virtual bool isValidSyntax() { return false; }
 	virtual parseTree* getRoot() { return NULL; }
 
