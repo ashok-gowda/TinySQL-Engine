@@ -16,13 +16,18 @@ string getIntermediateTableName()
 void deleteAllIntermediateTables(std::ofstream& fileOutput, SchemaManager& schema)
 {
 	char relationNum[10];
+	int tablesDeleted = 0;
 	for (int i = 0; i < tableIndex; i++)
 	{
 		_itoa_s(i, relationNum, 10);
 		string tableName = baseName + relationNum;
-		if(schema.relationExists(tableName))
-			dropTable(tableName, fileOutput, schema);		
+		if (schema.relationExists(tableName))
+		{
+			dropTable(tableName, fileOutput, schema);
+			tablesDeleted++;
+		}
 	}
+	schema.reduceOffset(tablesDeleted);
 }
 
 Relation * createTable(SchemaManager& schema_manager, string relation_name, vector<string> field_names, vector<enum FIELD_TYPE> field_types, std::ofstream& fwriteExecute) {
