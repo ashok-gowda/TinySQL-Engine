@@ -20,6 +20,8 @@
 
 Relation * createTable(SchemaManager& schema_manager, string relation_name, vector<string> field_names, vector<enum FIELD_TYPE> field_types, std::ofstream& fWriteExecute);
 
+void deleteAllIntermediateTables(std::ofstream& fileOutput, SchemaManager& schema);
+
 void appendTupleToRelation(Relation* relation_ptr, MainMemory& mem, int memory_block_index, Tuple& tuple);
 
 bool insertTable(string tableName, SchemaManager& schema_manager, std::map<string, string> map_of_attributes, MainMemory& mem, std::ofstream& fWriteExecute);
