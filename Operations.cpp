@@ -1026,7 +1026,7 @@ Relation * joinTables(vector<Relation*>& subListsOfTable1, vector<Relation*>& su
 	Tuple minimumTuple2 = mem.getBlock(subListsOfTable1.size())->getTuple(0);
 	int minimumBlockIndex2 = subListsOfTable1.size();
 	int minimumTupleIndex2 = 0;
-	while (noOfTables1Complete < totalNoofTables1 || noOfTables2Complete<totalNoofTables2) {
+	while (noOfTables1Complete < totalNoofTables1 && noOfTables2Complete<totalNoofTables2) {
 
 
 		for (int i = 0; i <totalNoofTables1; i++) {
@@ -1090,7 +1090,7 @@ Relation * joinTables(vector<Relation*>& subListsOfTable1, vector<Relation*>& su
 		else {
 			minimumTuple = minimumTuple2;
 			minimumBlockIndex = minimumBlockIndex2;
-			minimumTupleIndex2 = minimumTupleIndex2;
+			minimumTupleIndex = minimumTupleIndex2;
 			minimumTupleSelectedFrom1 = false;
 		}
 		
@@ -1152,8 +1152,8 @@ Relation * joinTables(vector<Relation*>& subListsOfTable1, vector<Relation*>& su
 								}
 								Tuple newTuple = joinTuples(joinedTable, block_pointer->getTuple(memoryTupleIndex[i]), *itr);
 								resultant_block_pointer->appendTuple(newTuple);
-								memoryTupleIndex.at(i) = memoryTupleIndex[i] + 1;
 							}
+							memoryTupleIndex.at(i) = memoryTupleIndex[i] + 1;
 						}
 						else {
 							break;
@@ -1223,8 +1223,8 @@ Relation * joinTables(vector<Relation*>& subListsOfTable1, vector<Relation*>& su
 								}
 								Tuple newTuple = joinTuples(joinedTable,*itr, block_pointer->getTuple(memoryTupleIndex[i]));
 								resultant_block_pointer->appendTuple(newTuple);
-								memoryTupleIndex.at(i) = memoryTupleIndex[i] + 1;
 							}
+							memoryTupleIndex.at(i) = memoryTupleIndex[i] + 1;
 						}
 						else {
 							break;
