@@ -560,10 +560,7 @@ Relation * sortOperation(vector<Relation*>  vectorOfSubLists, SchemaManager& sch
 	for (itr = vectorOfSubLists.begin(); itr != vectorOfSubLists.end(); itr++) {
 		if (counter == 0) {
 			Schema schemaOfSortedRelation = (*itr)->getSchema();
-			vector<string> fieldNames = schemaOfSortedRelation.getFieldNames();
-			vector<FIELD_TYPE> fieldTypes = schemaOfSortedRelation.getFieldTypes();
-			Schema schema(fieldNames, fieldTypes);
-			sorted_table = schema_manager.createRelation(getIntermediateTableName(), schema);
+			sorted_table = schema_manager.createRelation(getIntermediateTableName(), schemaOfSortedRelation);
 			schema = sorted_table->getSchema();
 		}
 		string relName = (*itr)->getRelationName();
@@ -686,10 +683,7 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 	for (itr = vectorOfSubLists.begin(); itr != vectorOfSubLists.end(); itr++) {
 		if (counter == 0) {
 			Schema schemaOfSortedRelation = (*itr)->getSchema();
-			vector<string> fieldNames = schemaOfSortedRelation.getFieldNames();
-			vector<FIELD_TYPE> fieldTypes = schemaOfSortedRelation.getFieldTypes();
-			Schema schema(fieldNames, fieldTypes);
-			duplicate_removal = schema_manager.createRelation(getIntermediateTableName(), schema);
+			duplicate_removal = schema_manager.createRelation(getIntermediateTableName(), schemaOfSortedRelation);
 			schema = duplicate_removal->getSchema();
 		}
 		string relName = (*itr)->getRelationName();
@@ -1522,10 +1516,7 @@ Relation * onePassOrdering(Relation * table_name, MainMemory& mem, SchemaManager
 		fwriteExecute << "Error in doing One pass as table blocks do not fit into memory\n\n";
 		return NULL;
 	}
-	vector<string> fieldNames = table_name->getSchema().getFieldNames();
-	vector<FIELD_TYPE> fieldTypes = table_name->getSchema().getFieldTypes();
-	Schema schema(fieldNames, fieldTypes);
-	Relation *sortedTable = schema_manager.createRelation(getIntermediateTableName(),schema);
+	Relation *sortedTable = schema_manager.createRelation(getIntermediateTableName(), table_name->getSchema());
 	if (sortedTable == NULL) {
 		fwriteExecute << "Error in creating of resultant table\n\n";
 			return NULL;
@@ -1561,10 +1552,7 @@ Relation * onePassDistinct(Relation * table_name, MainMemory& mem, SchemaManager
 		fwriteExecute << "Error in doing One pass as table blocks do not fit into memory\n\n";
 		return NULL;
 	}
-	vector<string> fieldNames = table_name->getSchema().getFieldNames();
-	vector<FIELD_TYPE> fieldTypes = table_name->getSchema().getFieldTypes();
-	Schema schema(fieldNames, fieldTypes);
-	Relation *distinctTable = schema_manager.createRelation(getIntermediateTableName(),schema);
+	Relation *distinctTable = schema_manager.createRelation(getIntermediateTableName(), table_name->getSchema());
 	if (distinctTable == NULL) {
 		fwriteExecute << "Error in creating of resultant table\n\n";
 		return NULL;
