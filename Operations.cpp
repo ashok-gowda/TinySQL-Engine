@@ -20,8 +20,8 @@ void deleteAllIntermediateTables(std::ofstream& fileOutput, SchemaManager& schem
 	{
 		_itoa_s(i, relationNum, 10);
 		string tableName = baseName + relationNum;
-		if(schema.getRelation(tableName))
-			dropTable(tableName, fileOutput, schema);
+		if(schema.relationExists(tableName))
+			dropTable(tableName, fileOutput, schema);		
 	}
 }
 
@@ -43,8 +43,9 @@ void appendTupleToRelation(Relation* relation_ptr, MainMemory& mem, int memory_b
 		relation_ptr->setBlock(relation_ptr->getNumOfBlocks(), memory_block_index);
 	}
 	else {
-		relation_ptr->getBlock(relation_ptr->getNumOfBlocks() - 1, memory_block_index);
 		block_ptr = mem.getBlock(memory_block_index);
+		block_ptr->clear();
+		relation_ptr->getBlock(relation_ptr->getNumOfBlocks() - 1, memory_block_index);
 
 		if (block_ptr->isFull()) {
 			block_ptr->clear();
@@ -559,7 +560,10 @@ Relation * sortOperation(vector<Relation*>  vectorOfSubLists, SchemaManager& sch
 	for (itr = vectorOfSubLists.begin(); itr != vectorOfSubLists.end(); itr++) {
 		if (counter == 0) {
 			Schema schemaOfSortedRelation = (*itr)->getSchema();
-			sorted_table = schema_manager.createRelation(getIntermediateTableName(), schemaOfSortedRelation);
+			vector<string> fieldNames = schemaOfSortedRelation.getFieldNames();
+			vector<FIELD_TYPE> fieldTypes = schemaOfSortedRelation.getFieldTypes();
+			Schema schema(fieldNames, fieldTypes);
+			sorted_table = schema_manager.createRelation(getIntermediateTableName(), schema);
 			schema = sorted_table->getSchema();
 		}
 		string relName = (*itr)->getRelationName();
@@ -682,7 +686,10 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 	for (itr = vectorOfSubLists.begin(); itr != vectorOfSubLists.end(); itr++) {
 		if (counter == 0) {
 			Schema schemaOfSortedRelation = (*itr)->getSchema();
-			duplicate_removal = schema_manager.createRelation(getIntermediateTableName(), schemaOfSortedRelation);
+			vector<string> fieldNames = schemaOfSortedRelation.getFieldNames();
+			vector<FIELD_TYPE> fieldTypes = schemaOfSortedRelation.getFieldTypes();
+			Schema schema(fieldNames, fieldTypes);
+			duplicate_removal = schema_manager.createRelation(getIntermediateTableName(), schema);
 			schema = duplicate_removal->getSchema();
 		}
 		string relName = (*itr)->getRelationName();
@@ -1515,7 +1522,10 @@ Relation * onePassOrdering(Relation * table_name, MainMemory& mem, SchemaManager
 		fwriteExecute << "Error in doing One pass as table blocks do not fit into memory\n\n";
 		return NULL;
 	}
-	Relation *sortedTable = schema_manager.createRelation(getIntermediateTableName(), table_name->getSchema());
+	vector<string> fieldNames = table_name->getSchema().getFieldNames();
+	vector<FIELD_TYPE> fieldTypes = table_name->getSchema().getFieldTypes();
+	Schema schema(fieldNames, fieldTypes);
+	Relation *sortedTable = schema_manager.createRelation(getIntermediateTableName(),schema);
 	if (sortedTable == NULL) {
 		fwriteExecute << "Error in creating of resultant table\n\n";
 			return NULL;
@@ -1551,7 +1561,10 @@ Relation * onePassDistinct(Relation * table_name, MainMemory& mem, SchemaManager
 		fwriteExecute << "Error in doing One pass as table blocks do not fit into memory\n\n";
 		return NULL;
 	}
-	Relation *distinctTable = schema_manager.createRelation(getIntermediateTableName(), table_name->getSchema());
+	vector<string> fieldNames = table_name->getSchema().getFieldNames();
+	vector<FIELD_TYPE> fieldTypes = table_name->getSchema().getFieldTypes();
+	Schema schema(fieldNames, fieldTypes);
+	Relation *distinctTable = schema_manager.createRelation(getIntermediateTableName(),schema);
 	if (distinctTable == NULL) {
 		fwriteExecute << "Error in creating of resultant table\n\n";
 		return NULL;
