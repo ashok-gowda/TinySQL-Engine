@@ -46,9 +46,10 @@ Relation* cartesianProductOnePass(vector<Relation*>&  tables, SchemaManager& sch
 
 Relation* cartesianProductOnePass(vector<string>&  tablesNames, SchemaManager& schema_manager, MainMemory& mem, vector<vector<JoinCondition*>> &listOfJoinConditions, std::ofstream& fWriteExecute);
 
-Relation * joinTables(vector<Relation*> subListsOfTable1, vector<Relation*> subListsOfTable2,
-	SchemaManager &schema_manager, MainMemory &mem, vector<vector<JoinCondition*>> joinConditions);
+Relation * joinTables(vector<Relation*>& subListsOfTable1, vector<Relation*>& subListsOfTable2,
+	SchemaManager &schema_manager, MainMemory &mem, vector<JoinCondition*>& joinConditions, Relation *joinedTable);
 
+Relation * createSchemaForJoinTable(vector<Relation*> subListsOfTable1, vector<Relation*> subListsOfTable2, SchemaManager& schemaManager);
 Relation * onePassDistinct(Relation * table_name, MainMemory& mem, SchemaManager& schema_manager, vector<OperandOperator*>& attributesList, std::ofstream& fWriteExecute);
 
 Relation * onePassOrdering(Relation * table_name, MainMemory& mem, SchemaManager& schema_manager, vector<OperandOperator*>& attributesList, std::ofstream& fWriteExecute);

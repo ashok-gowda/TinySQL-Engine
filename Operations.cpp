@@ -801,7 +801,6 @@ bool checkIfTupleSatisfiesJoinConditions(Tuple& tupleForTable1,Tuple& tupleForTa
 		return true;
 	}
 	vector<JoinCondition*>::iterator itrList;
-	int flag = 1;
 		for (itrList = listOfJoinConditions.begin(); itrList != listOfJoinConditions.end(); itrList++) {
 			int size = (*itrList)->getOperand1().size();
 			if (size == 1 && (*itrList)->getOperand1().front()->getType() == VARIABLE
@@ -812,18 +811,15 @@ bool checkIfTupleSatisfiesJoinConditions(Tuple& tupleForTable1,Tuple& tupleForTa
 					(*itrList)->getOperand2().front()->getName();
 				if (strcmp((*itrList)->getOperatorOfOperation().c_str(), "<") == 0 && strcmp(operand1.c_str(), operand2.c_str()) >= 0)
 				{
-					flag = 0;
-					break;
+					return false;
 				}
 				else if (strcmp((*itrList)->getOperatorOfOperation().c_str(), "=") == 0 && strcmp(operand1.c_str(), operand2.c_str()) != 0)
 				{
-					flag = 0;
-					break;
+					return false;
 				}
 				else if (strcmp((*itrList)->getOperatorOfOperation().c_str(), ">") == 0 && strcmp(operand1.c_str(), operand2.c_str()) <= 0)
 				{
-					flag = 0;
-					break;
+					return false;
 				}
 			}
 			else {
@@ -831,25 +827,19 @@ bool checkIfTupleSatisfiesJoinConditions(Tuple& tupleForTable1,Tuple& tupleForTa
 				int valueOfOperand2 = getValueFromConversionOfPrefixToInfix((*itrList)->getOperand2(), tupleForTable2);
 				if (strcmp((*itrList)->getOperatorOfOperation().c_str(), "<") == 0 && valueOfOperand1 >= valueOfOperand2)
 				{
-					flag = 0;
-					break;
+					return false;
 				}
 				else if (strcmp((*itrList)->getOperatorOfOperation().c_str(), "=") == 0 && valueOfOperand1 != valueOfOperand2)
 				{
-					flag = 0;
-					break;
+					return false;
 				}
 				else if (strcmp((*itrList)->getOperatorOfOperation().c_str(), ">") == 0 && valueOfOperand1 <= valueOfOperand2)
 				{
-					flag = 0;
-					break;
+					return false;
 				}
 			}
-		if (flag == 1) {
-			return true;
-		}
 	}
-	return false;
+		return true;
 }
 
 vector<string> getStringOfVariablesFromConversionOfPrefixToInfix(vector<OperandOperator *> vectorOfOperands) {
@@ -880,12 +870,14 @@ vector<string> getListOfVariablesToCompareForMinimumTupleFromTable1(Schema & sch
 	return vectorOfAttributesOfTable1;
 }
 
-Tuple& joinTuples(Relation *joinResultTuple, Tuple& tupleOfTable1, Tuple& tupleOfTable2) {
+Tuple joinTuples(Relation *joinResultTuple, Tuple& tupleOfTable1, Tuple& tupleOfTable2) {
 	Tuple& resultantTuple=joinResultTuple->createTuple();
 	vector<string>::iterator itr;
 	Schema schemaOfTable1 = tupleOfTable1.getSchema();
 	Schema schemaOfTable2 = tupleOfTable2.getSchema();
-	for (itr = schemaOfTable1.getFieldNames().begin(); itr != schemaOfTable1.getFieldNames().end(); itr++) {
+	vector<string> fieldNamesOfTable1 = schemaOfTable1.getFieldNames();
+	vector<string> fieldNamesOfTable2 = schemaOfTable2.getFieldNames();
+	for (itr = fieldNamesOfTable1.begin(); itr != fieldNamesOfTable1.end(); itr++) {
 		if (schemaOfTable1.getFieldType(*itr) == STR20) {
 			resultantTuple.setField(*itr, (*tupleOfTable1.getField(*itr).str));
 		}
@@ -893,12 +885,12 @@ Tuple& joinTuples(Relation *joinResultTuple, Tuple& tupleOfTable1, Tuple& tupleO
 			resultantTuple.setField(*itr,tupleOfTable1.getField(*itr).integer);
 		}
 	}
-	for (itr = schemaOfTable2.getFieldNames().begin(); itr != schemaOfTable2.getFieldNames().end(); itr++) {
+	for (itr = fieldNamesOfTable2.begin(); itr != fieldNamesOfTable2.end(); itr++) {
 		if (schemaOfTable2.getFieldType(*itr) == STR20) {
-			resultantTuple.setField(*itr, (*tupleOfTable1.getField(*itr).str));
+			resultantTuple.setField(*itr, (*tupleOfTable2.getField(*itr).str));
 		}
 		else {
-			resultantTuple.setField(*itr,tupleOfTable1.getField(*itr).integer);
+			resultantTuple.setField(*itr,tupleOfTable2.getField(*itr).integer);
 		}
 	}
 	return resultantTuple;
@@ -923,13 +915,12 @@ Relation * createSchemaForJoinTable(vector<Relation*> subListsOfTable1, vector<R
 }
 
 
-Relation * joinTables(vector<Relation*> subListsOfTable1, vector<Relation*> subListsOfTable2, 
-	SchemaManager &schema_manager,MainMemory &mem,vector<JoinCondition*> joinConditions) {
-	Relation * joinedTable = NULL;
-	joinedTable = createSchemaForJoinTable(subListsOfTable1, subListsOfTable2,schema_manager);
+Relation * joinTables(vector<Relation*>& subListsOfTable1, vector<Relation*>& subListsOfTable2, 
+	SchemaManager &schema_manager,MainMemory &mem,vector<JoinCondition*>& joinConditions,Relation *joinedTable) {
+	
 	Schema schemaOfTable1 = subListsOfTable1.front()->getSchema();
 	vector<Relation *>::iterator itr;
-	int relation_block_index = 0;
+	int relation_block_index = joinedTable->getNumOfBlocks();
 	int counter = 0;// No of 
 	map<Relation*, int> mapOfRelationNamesWithBlocks;
 	map<int, Relation*> memoryBlockIndex;
@@ -1030,7 +1021,7 @@ Relation * joinTables(vector<Relation*> subListsOfTable1, vector<Relation*> subL
 							memoryTupleIndex.at(i) = 0;
 						}
 					}
-					if (compareTuple(minimumTuple, block_pointer->getTuple(memoryTupleIndex[i]), subListsOfTable1.front()->getSchema(), comparingJoinOperandsOfTable1) == true) {
+					if (compareEquality(minimumTuple, block_pointer->getTuple(memoryTupleIndex[i]), subListsOfTable1.front()->getSchema(), comparingJoinOperandsOfTable1) == true) {
 						vector<Tuple>::iterator itr;
 						for (itr = listOfTuplesOfTable2WhichMatchWithTable1.begin(); itr != listOfTuplesOfTable2WhichMatchWithTable1.end(); itr++) {
 							if (resultant_block_pointer->isFull()) {
@@ -1039,10 +1030,14 @@ Relation * joinTables(vector<Relation*> subListsOfTable1, vector<Relation*> subL
 							}
 							Tuple newTuple = joinTuples(joinedTable, minimumTuple, *itr);
 							resultant_block_pointer->appendTuple(newTuple);
+							memoryTupleIndex.at(i) = memoryTupleIndex[i] + 1;
 						}
 					}
 				}
 			}
+		}
+		else {
+			memoryTupleIndex.at(minimumBlockIndex) = minimumTupleIndex + 1;
 		}
 
 		//Next first tuple

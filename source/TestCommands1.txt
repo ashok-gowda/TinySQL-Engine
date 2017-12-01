@@ -2,5 +2,5 @@ CREATE TABLE course (sid INT, homework INT, project INT, exam INT, grade STR20)
 CREATE TABLE course2 (sid INT, homework INT, project INT)
 INSERT INTO course (sid, homework, project, exam, grade) VALUES (1, 10, 100, 100, "A")
 INSERT INTO course (sid, homework, project, exam, grade) VALUES (3, 21, 102, 98, "C")
-INSERT into course (sid, homework, project, exam, grade) SELECT * FROM course WHERE sid=3
-SELECT * FROM course
+INSERT into course2 (sid, homework, project) VALUES (3, 21, 97)
+SELECT * FROM course,course2 where course.sid = course2.sid AND course.homework = course2.homework
