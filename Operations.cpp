@@ -801,7 +801,6 @@ bool checkIfTupleSatisfiesJoinConditions(Tuple& tupleForTable1,Tuple& tupleForTa
 		return true;
 	}
 	vector<JoinCondition*>::iterator itrList;
-	int flag = 1;
 		for (itrList = listOfJoinConditions.begin(); itrList != listOfJoinConditions.end(); itrList++) {
 			int size = (*itrList)->getOperand1().size();
 			if (size == 1 && (*itrList)->getOperand1().front()->getType() == VARIABLE
@@ -812,18 +811,15 @@ bool checkIfTupleSatisfiesJoinConditions(Tuple& tupleForTable1,Tuple& tupleForTa
 					(*itrList)->getOperand2().front()->getName();
 				if (strcmp((*itrList)->getOperatorOfOperation().c_str(), "<") == 0 && strcmp(operand1.c_str(), operand2.c_str()) >= 0)
 				{
-					flag = 0;
-					break;
+					return false;
 				}
 				else if (strcmp((*itrList)->getOperatorOfOperation().c_str(), "=") == 0 && strcmp(operand1.c_str(), operand2.c_str()) != 0)
 				{
-					flag = 0;
-					break;
+					return false;
 				}
 				else if (strcmp((*itrList)->getOperatorOfOperation().c_str(), ">") == 0 && strcmp(operand1.c_str(), operand2.c_str()) <= 0)
 				{
-					flag = 0;
-					break;
+					return false;
 				}
 			}
 			else {
@@ -831,22 +827,56 @@ bool checkIfTupleSatisfiesJoinConditions(Tuple& tupleForTable1,Tuple& tupleForTa
 				int valueOfOperand2 = getValueFromConversionOfPrefixToInfix((*itrList)->getOperand2(), tupleForTable2);
 				if (strcmp((*itrList)->getOperatorOfOperation().c_str(), "<") == 0 && valueOfOperand1 >= valueOfOperand2)
 				{
-					flag = 0;
-					break;
+					return false;
 				}
 				else if (strcmp((*itrList)->getOperatorOfOperation().c_str(), "=") == 0 && valueOfOperand1 != valueOfOperand2)
 				{
-					flag = 0;
-					break;
+					return false;
 				}
 				else if (strcmp((*itrList)->getOperatorOfOperation().c_str(), ">") == 0 && valueOfOperand1 <= valueOfOperand2)
 				{
-					flag = 0;
-					break;
+					return false;
 				}
 			}
-		if (flag == 1) {
-			return true;
+	}
+		return true;
+}
+
+
+bool checkMinimumTupleAcrossSchemas(Tuple& tupleForTable1, Tuple& tupleForTable2, 
+	Schema& schemaOfTable1, vector<JoinCondition*> &listOfJoinConditions) {
+	if (listOfJoinConditions.empty()) {
+		return true;
+	}
+	vector<JoinCondition*>::iterator itrList;
+	for (itrList = listOfJoinConditions.begin(); itrList != listOfJoinConditions.end(); itrList++) {
+		int size = (*itrList)->getOperand1().size();
+		if (size == 1 && (*itrList)->getOperand1().front()->getType() == VARIABLE
+			&& schemaOfTable1.getFieldType((*itrList)->getOperand1().front()->getName()) == STR20) {
+
+			string operand1 = *tupleForTable1.getField((*itrList)->getOperand1().front()->getName()).str;
+			string operand2 = (*itrList)->getOperand2().front()->getType() == VARIABLE ? *tupleForTable2.getField((*itrList)->getOperand2().front()->getName()).str :
+				(*itrList)->getOperand2().front()->getName();
+			if (strcmp(operand1.c_str(), operand2.c_str()) > 0)
+			{
+				return true;
+			}
+			else if (strcmp(operand1.c_str(), operand2.c_str()) < 0)
+			{
+				return false;
+			}
+		}
+		else {
+			int valueOfOperand1 = getValueFromConversionOfPrefixToInfix((*itrList)->getOperand1(), tupleForTable1);
+			int valueOfOperand2 = getValueFromConversionOfPrefixToInfix((*itrList)->getOperand2(), tupleForTable2);
+			if (valueOfOperand1 >valueOfOperand2)
+			{
+				return true;
+			}
+			else if (valueOfOperand1 <valueOfOperand2)
+			{
+				return false;
+			}
 		}
 	}
 	return false;
@@ -863,29 +893,46 @@ vector<string> getStringOfVariablesFromConversionOfPrefixToInfix(vector<OperandO
 	return fieldNames;
 }
 
-vector<string> getListOfVariablesToCompareForMinimumTupleFromTable1(Schema & schemaOfTable1, vector<JoinCondition*> &listOfJoinConditions) {
-	vector<string> vectorOfAttributesOfTable1;
+vector<string> getListOfVariablesToCompareForMinimumTupleFromTable(Schema & schema,vector<JoinCondition*> &listOfJoinConditions, int index) {
+	vector<string> vectorOfAttributesOfTable;
 	vector<JoinCondition*>::iterator itrList;
-	for (itrList = listOfJoinConditions.begin(); itrList != listOfJoinConditions.end(); itrList++) {
-		int size = (*itrList)->getOperand1().size();
-		if (size == 1 && (*itrList)->getOperand1().front()->getType() == VARIABLE
-			&& schemaOfTable1.getFieldType((*itrList)->getOperand1().front()->getName()) == STR20) {
-			vectorOfAttributesOfTable1.push_back((*itrList)->getOperand1().front()->getName());
-		}
-		else {
-			vector<string>attributeList = getStringOfVariablesFromConversionOfPrefixToInfix((*itrList)->getOperand1());
-			vectorOfAttributesOfTable1.insert(vectorOfAttributesOfTable1.end(), attributeList.begin(), attributeList.end());
+	if (index == 1) {
+		for (itrList = listOfJoinConditions.begin(); itrList != listOfJoinConditions.end(); itrList++) {
+			int size = (*itrList)->getOperand1().size();
+			if (size == 1 && (*itrList)->getOperand1().front()->getType() == VARIABLE
+				&& schema.getFieldType((*itrList)->getOperand1().front()->getName()) == STR20) {
+				vectorOfAttributesOfTable.push_back((*itrList)->getOperand1().front()->getName());
+			}
+			else {
+				vector<string>attributeList = getStringOfVariablesFromConversionOfPrefixToInfix((*itrList)->getOperand1());
+				vectorOfAttributesOfTable.insert(vectorOfAttributesOfTable.end(), attributeList.begin(), attributeList.end());
+			}
 		}
 	}
-	return vectorOfAttributesOfTable1;
+	else {
+		for (itrList = listOfJoinConditions.begin(); itrList != listOfJoinConditions.end(); itrList++) {
+			int size = (*itrList)->getOperand2().size();
+			if (size == 1 && (*itrList)->getOperand2().front()->getType() == VARIABLE
+				&& schema.getFieldType((*itrList)->getOperand2().front()->getName()) == STR20) {
+				vectorOfAttributesOfTable.push_back((*itrList)->getOperand2().front()->getName());
+			}
+			else {
+				vector<string>attributeList = getStringOfVariablesFromConversionOfPrefixToInfix((*itrList)->getOperand2());
+				vectorOfAttributesOfTable.insert(vectorOfAttributesOfTable.end(), attributeList.begin(), attributeList.end());
+			}
+		}
+	}
+	return vectorOfAttributesOfTable;
 }
 
-Tuple& joinTuples(Relation *joinResultTuple, Tuple& tupleOfTable1, Tuple& tupleOfTable2) {
+Tuple joinTuples(Relation *joinResultTuple, Tuple& tupleOfTable1, Tuple& tupleOfTable2) {
 	Tuple& resultantTuple=joinResultTuple->createTuple();
 	vector<string>::iterator itr;
 	Schema schemaOfTable1 = tupleOfTable1.getSchema();
 	Schema schemaOfTable2 = tupleOfTable2.getSchema();
-	for (itr = schemaOfTable1.getFieldNames().begin(); itr != schemaOfTable1.getFieldNames().end(); itr++) {
+	vector<string> fieldNamesOfTable1 = schemaOfTable1.getFieldNames();
+	vector<string> fieldNamesOfTable2 = schemaOfTable2.getFieldNames();
+	for (itr = fieldNamesOfTable1.begin(); itr != fieldNamesOfTable1.end(); itr++) {
 		if (schemaOfTable1.getFieldType(*itr) == STR20) {
 			resultantTuple.setField(*itr, (*tupleOfTable1.getField(*itr).str));
 		}
@@ -893,12 +940,12 @@ Tuple& joinTuples(Relation *joinResultTuple, Tuple& tupleOfTable1, Tuple& tupleO
 			resultantTuple.setField(*itr,tupleOfTable1.getField(*itr).integer);
 		}
 	}
-	for (itr = schemaOfTable2.getFieldNames().begin(); itr != schemaOfTable2.getFieldNames().end(); itr++) {
+	for (itr = fieldNamesOfTable2.begin(); itr != fieldNamesOfTable2.end(); itr++) {
 		if (schemaOfTable2.getFieldType(*itr) == STR20) {
-			resultantTuple.setField(*itr, (*tupleOfTable1.getField(*itr).str));
+			resultantTuple.setField(*itr, (*tupleOfTable2.getField(*itr).str));
 		}
 		else {
-			resultantTuple.setField(*itr,tupleOfTable1.getField(*itr).integer);
+			resultantTuple.setField(*itr,tupleOfTable2.getField(*itr).integer);
 		}
 	}
 	return resultantTuple;
@@ -923,13 +970,13 @@ Relation * createSchemaForJoinTable(vector<Relation*> subListsOfTable1, vector<R
 }
 
 
-Relation * joinTables(vector<Relation*> subListsOfTable1, vector<Relation*> subListsOfTable2, 
-	SchemaManager &schema_manager,MainMemory &mem,vector<JoinCondition*> joinConditions) {
-	Relation * joinedTable = NULL;
-	joinedTable = createSchemaForJoinTable(subListsOfTable1, subListsOfTable2,schema_manager);
+Relation * joinTables(vector<Relation*>& subListsOfTable1, vector<Relation*>& subListsOfTable2, 
+	SchemaManager &schema_manager,MainMemory &mem,vector<JoinCondition*>& joinConditions,Relation *joinedTable) {
+	
 	Schema schemaOfTable1 = subListsOfTable1.front()->getSchema();
+	Schema schemaOfTable2 = subListsOfTable2.front()->getSchema();
 	vector<Relation *>::iterator itr;
-	int relation_block_index = 0;
+	int relation_block_index = joinedTable->getNumOfBlocks();
 	int counter = 0;// No of 
 	map<Relation*, int> mapOfRelationNamesWithBlocks;
 	map<int, Relation*> memoryBlockIndex;
@@ -948,17 +995,28 @@ Relation * joinTables(vector<Relation*> subListsOfTable1, vector<Relation*> subL
 		(*itr)->getBlock(0, counter);
 		++counter;
 	}
-	vector<string> comparingJoinOperandsOfTable1 = getListOfVariablesToCompareForMinimumTupleFromTable1(subListsOfTable1.front()->getSchema(), joinConditions);
+	vector<string> comparingJoinOperandsOfTable1 = getListOfVariablesToCompareForMinimumTupleFromTable(subListsOfTable1.front()->getSchema(), joinConditions,1);
+	vector<string> comparingJoinOperandsOfTable2 = getListOfVariablesToCompareForMinimumTupleFromTable(subListsOfTable2.front()->getSchema(), joinConditions, 2);
+	
+
 	
 	Block* resultant_block_pointer = mem.getBlock(mem.getMemorySize() - 1);
 	resultant_block_pointer->clear();
-	int totalNoofTables = subListsOfTable1.size();
-	int noOfTablesComplete = 0;
-	Tuple minimumTuple = mem.getBlock(0)->getTuple(0);
-	int minimumBlockIndex = 0;
-	int minimumTupleIndex = 0;
-	while (noOfTablesComplete < totalNoofTables) {
-		for (int i = 0; i <totalNoofTables; i++) {
+	int totalNoofTables1 = subListsOfTable1.size();
+	int totalNoofTables2 = subListsOfTable2.size();
+	int noOfTables1Complete = 0;
+	int noOfTables2Complete = 0;
+	Tuple minimumTuple1 = mem.getBlock(0)->getTuple(0);
+	int minimumBlockIndex1 = 0;
+	int minimumTupleIndex1 = 0;
+	bool minimumTupleSelectedFrom1 = false;
+	Tuple minimumTuple2 = mem.getBlock(subListsOfTable1.size())->getTuple(0);
+	int minimumBlockIndex2 = subListsOfTable1.size();
+	int minimumTupleIndex2 = 0;
+	while (noOfTables1Complete < totalNoofTables1 || noOfTables2Complete<totalNoofTables2) {
+
+
+		for (int i = 0; i <totalNoofTables1; i++) {
 			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
 				Block* block_pointer = mem.getBlock(i);
 				int numberOfTuples = block_pointer->getNumTuples();
@@ -967,7 +1025,7 @@ Relation * joinTables(vector<Relation*> subListsOfTable1, vector<Relation*> subL
 					int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
 					if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex + 1) {
 						mapOfRelationNamesWithBlocks.at(relationOfBlock) = -1;
-						++noOfTablesComplete;
+						++noOfTables1Complete;
 						continue;
 					}
 					else {
@@ -976,16 +1034,17 @@ Relation * joinTables(vector<Relation*> subListsOfTable1, vector<Relation*> subL
 						memoryTupleIndex.at(i) = 0;
 					}
 				}
-				if (compareTuple(minimumTuple, block_pointer->getTuple(memoryTupleIndex[i]),subListsOfTable1.front()->getSchema(), comparingJoinOperandsOfTable1) == true) {
-					minimumBlockIndex = i;
-					minimumTupleIndex = memoryTupleIndex[i];
-					minimumTuple = block_pointer->getTuple(memoryTupleIndex[i]);
+				if (compareTuple(minimumTuple1, block_pointer->getTuple(memoryTupleIndex[i]),subListsOfTable1.front()->getSchema(), comparingJoinOperandsOfTable1) == true) {
+					minimumBlockIndex1 = i;
+					minimumTupleIndex1 = memoryTupleIndex[i];
+					minimumTuple1 = block_pointer->getTuple(memoryTupleIndex[i]);
 				}
 			}
 		}
-		vector<Tuple> listOfTuplesOfTable2WhichMatchWithTable1;
+
+
 		for (int i = subListsOfTable1.size(); i < subListsOfTable1.size() + subListsOfTable2.size(); i++) {
-			while (mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
+			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
 				Block* block_pointer = mem.getBlock(i);
 				int numberOfTuples = block_pointer->getNumTuples();
 				if (memoryTupleIndex[i] >= numberOfTuples) {
@@ -993,6 +1052,7 @@ Relation * joinTables(vector<Relation*> subListsOfTable1, vector<Relation*> subL
 					int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
 					if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex + 1) {
 						mapOfRelationNamesWithBlocks.at(relationOfBlock) = -1;
+						++noOfTables2Complete;
 						continue;
 					}
 					else {
@@ -1001,19 +1061,30 @@ Relation * joinTables(vector<Relation*> subListsOfTable1, vector<Relation*> subL
 						memoryTupleIndex.at(i) = 0;
 					}
 				}
-				if (checkIfTupleSatisfiesJoinConditions(minimumTuple, block_pointer->getTuple(memoryTupleIndex[i]), schemaOfTable1, joinConditions)==true) {
-					listOfTuplesOfTable2WhichMatchWithTable1.push_back(block_pointer->getTuple(memoryTupleIndex[i]));
-					memoryTupleIndex.at(i) = memoryTupleIndex.at(i) + 1;
-				}
-				else {
-					break;
+				if (compareTuple(minimumTuple2, block_pointer->getTuple(memoryTupleIndex[i]), subListsOfTable2.front()->getSchema(), comparingJoinOperandsOfTable2) == true) {
+					minimumBlockIndex2 = i;
+					minimumTupleIndex2 = memoryTupleIndex[i];
+					minimumTuple2 = block_pointer->getTuple(memoryTupleIndex[i]);
 				}
 			}
-
 		}
-		if (listOfTuplesOfTable2WhichMatchWithTable1.size() > 0) {
-			for (int i = 0; i < totalNoofTables; i++) {
-				if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
+		Tuple minimumTuple = minimumTuple1;
+		int minimumBlockIndex = minimumBlockIndex1;
+		int minimumTupleIndex = minimumTupleIndex1;
+		if (checkMinimumTupleAcrossSchemas(minimumTuple1,minimumTuple2,schemaOfTable1,joinConditions)==false){
+			minimumTupleSelectedFrom1 = true;
+		}
+		else {
+			minimumTuple = minimumTuple2;
+			minimumBlockIndex = minimumBlockIndex2;
+			minimumTupleIndex2 = minimumTupleIndex2;
+			minimumTupleSelectedFrom1 = false;
+		}
+		
+		if (minimumTupleSelectedFrom1 == true) {
+			vector<Tuple> listOfTuplesOfTable2WhichMatchWithTable1;
+			for (int i = subListsOfTable1.size(); i < subListsOfTable1.size() + subListsOfTable2.size(); i++) {
+				while (mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
 					Block* block_pointer = mem.getBlock(i);
 					int numberOfTuples = block_pointer->getNumTuples();
 					if (memoryTupleIndex[i] >= numberOfTuples) {
@@ -1021,7 +1092,7 @@ Relation * joinTables(vector<Relation*> subListsOfTable1, vector<Relation*> subL
 						int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
 						if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex + 1) {
 							mapOfRelationNamesWithBlocks.at(relationOfBlock) = -1;
-							++noOfTablesComplete;
+							++noOfTables2Complete;
 							continue;
 						}
 						else {
@@ -1030,29 +1101,136 @@ Relation * joinTables(vector<Relation*> subListsOfTable1, vector<Relation*> subL
 							memoryTupleIndex.at(i) = 0;
 						}
 					}
-					if (compareTuple(minimumTuple, block_pointer->getTuple(memoryTupleIndex[i]), subListsOfTable1.front()->getSchema(), comparingJoinOperandsOfTable1) == true) {
-						vector<Tuple>::iterator itr;
-						for (itr = listOfTuplesOfTable2WhichMatchWithTable1.begin(); itr != listOfTuplesOfTable2WhichMatchWithTable1.end(); itr++) {
-							if (resultant_block_pointer->isFull()) {
-								joinedTable->setBlock(relation_block_index++, mem.getMemorySize() - 1);
-								resultant_block_pointer->clear();
+					if (checkIfTupleSatisfiesJoinConditions(minimumTuple, block_pointer->getTuple(memoryTupleIndex[i]), schemaOfTable1, joinConditions) == true) {
+						listOfTuplesOfTable2WhichMatchWithTable1.push_back(block_pointer->getTuple(memoryTupleIndex[i]));
+						memoryTupleIndex.at(i) = memoryTupleIndex.at(i) + 1;
+					}
+					else {
+						break;
+					}
+				}
+
+			}
+			if (listOfTuplesOfTable2WhichMatchWithTable1.size() > 0) {
+				for (int i = 0; i < totalNoofTables1; i++) {
+					while (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
+						Block* block_pointer = mem.getBlock(i);
+						int numberOfTuples = block_pointer->getNumTuples();
+						if (memoryTupleIndex[i] >= numberOfTuples) {
+							Relation* relationOfBlock = memoryBlockIndex[i];
+							int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
+							if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex + 1) {
+								mapOfRelationNamesWithBlocks.at(relationOfBlock) = -1;
+								++noOfTables1Complete;
+								continue;
 							}
-							Tuple newTuple = joinTuples(joinedTable, minimumTuple, *itr);
-							resultant_block_pointer->appendTuple(newTuple);
+							else {
+								mapOfRelationNamesWithBlocks.at(relationOfBlock) = diskBlockIndex + 1;
+								relationOfBlock->getBlock(mapOfRelationNamesWithBlocks[relationOfBlock], i);
+								memoryTupleIndex.at(i) = 0;
+							}
+						}
+						if (compareEquality(minimumTuple, block_pointer->getTuple(memoryTupleIndex[i]), subListsOfTable1.front()->getSchema(), comparingJoinOperandsOfTable1) == true) {
+							vector<Tuple>::iterator itr;
+							for (itr = listOfTuplesOfTable2WhichMatchWithTable1.begin(); itr != listOfTuplesOfTable2WhichMatchWithTable1.end(); itr++) {
+								if (resultant_block_pointer->isFull()) {
+									joinedTable->setBlock(relation_block_index++, mem.getMemorySize() - 1);
+									resultant_block_pointer->clear();
+								}
+								Tuple newTuple = joinTuples(joinedTable, block_pointer->getTuple(memoryTupleIndex[i]), *itr);
+								resultant_block_pointer->appendTuple(newTuple);
+								memoryTupleIndex.at(i) = memoryTupleIndex[i] + 1;
+							}
+						}
+						else {
+							break;
 						}
 					}
 				}
 			}
+			else {
+				memoryTupleIndex.at(minimumBlockIndex) = minimumTupleIndex + 1;
+			}
 		}
+		else {
+			vector<Tuple> listOfTuplesOfTable1WhichMatchWithTable2;
+			for (int i =0; i < subListsOfTable1.size(); i++) {
+				while (mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
+					Block* block_pointer = mem.getBlock(i);
+					int numberOfTuples = block_pointer->getNumTuples();
+					if (memoryTupleIndex[i] >= numberOfTuples) {
+						Relation* relationOfBlock = memoryBlockIndex[i];
+						int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
+						if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex + 1) {
+							mapOfRelationNamesWithBlocks.at(relationOfBlock) = -1;
+							++noOfTables1Complete;
+							continue;
+						}
+						else {
+							mapOfRelationNamesWithBlocks.at(relationOfBlock) = diskBlockIndex + 1;
+							relationOfBlock->getBlock(mapOfRelationNamesWithBlocks[relationOfBlock], i);
+							memoryTupleIndex.at(i) = 0;
+						}
+					}
+					if (checkIfTupleSatisfiesJoinConditions(block_pointer->getTuple(memoryTupleIndex[i]),minimumTuple, schemaOfTable1, joinConditions) == true) {
+						listOfTuplesOfTable1WhichMatchWithTable2.push_back(block_pointer->getTuple(memoryTupleIndex[i]));
+						memoryTupleIndex.at(i) = memoryTupleIndex.at(i) + 1;
+					}
+					else {
+						break;
+					}
+				}
 
+			}
+			if (listOfTuplesOfTable1WhichMatchWithTable2.size() > 0) {
+				for (int i = subListsOfTable1.size(); i < subListsOfTable1.size() + subListsOfTable2.size(); i++) {
+					while (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
+						Block* block_pointer = mem.getBlock(i);
+						int numberOfTuples = block_pointer->getNumTuples();
+						if (memoryTupleIndex[i] >= numberOfTuples) {
+							Relation* relationOfBlock = memoryBlockIndex[i];
+							int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
+							if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex + 1) {
+								mapOfRelationNamesWithBlocks.at(relationOfBlock) = -1;
+								++noOfTables2Complete;
+								continue;
+							}
+							else {
+								mapOfRelationNamesWithBlocks.at(relationOfBlock) = diskBlockIndex + 1;
+								relationOfBlock->getBlock(mapOfRelationNamesWithBlocks[relationOfBlock], i);
+								memoryTupleIndex.at(i) = 0;
+							}
+						}
+						if (compareEquality(minimumTuple, block_pointer->getTuple(memoryTupleIndex[i]),schemaOfTable2, comparingJoinOperandsOfTable2) == true) {
+							vector<Tuple>::iterator itr;
+							for (itr = listOfTuplesOfTable1WhichMatchWithTable2.begin(); itr != listOfTuplesOfTable1WhichMatchWithTable2.end(); itr++) {
+								if (resultant_block_pointer->isFull()) {
+									joinedTable->setBlock(relation_block_index++, mem.getMemorySize() - 1);
+									resultant_block_pointer->clear();
+								}
+								Tuple newTuple = joinTuples(joinedTable,*itr, block_pointer->getTuple(memoryTupleIndex[i]));
+								resultant_block_pointer->appendTuple(newTuple);
+								memoryTupleIndex.at(i) = memoryTupleIndex[i] + 1;
+							}
+						}
+						else {
+							break;
+						}
+					}
+				}
+			}
+			else {
+				memoryTupleIndex.at(minimumBlockIndex) = minimumTupleIndex + 1;
+			}
+		}
 		//Next first tuple
-		for (int i = 0; i < totalNoofTables; i++) {
+		for (int i = 0; i < totalNoofTables1; i++) {
 			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
 				Relation * relation_pointer = memoryBlockIndex[i];
 				if (memoryTupleIndex[i] < mem.getBlock(i)->getNumTuples()) {
-					minimumTuple = mem.getBlock(i)->getTuple(memoryTupleIndex[i]);
-					minimumBlockIndex = i;
-					minimumTupleIndex = memoryTupleIndex[i];
+					minimumTuple1 = mem.getBlock(i)->getTuple(memoryTupleIndex[i]);
+					minimumBlockIndex1 = i;
+					minimumTupleIndex1 = memoryTupleIndex[i];
 					break;
 				}
 				else if (memoryTupleIndex[i] >= mem.getBlock(i)->getNumTuples()) {
@@ -1060,22 +1238,53 @@ Relation * joinTables(vector<Relation*> subListsOfTable1, vector<Relation*> subL
 					int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
 					if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex + 1) {
 						mapOfRelationNamesWithBlocks.at(relationOfBlock) = -1;
-						++noOfTablesComplete;
+						++noOfTables1Complete;
 						continue;
 					}
 					else {
 						mapOfRelationNamesWithBlocks.at(relationOfBlock) = diskBlockIndex + 1;
 						relationOfBlock->getBlock(mapOfRelationNamesWithBlocks[relationOfBlock], i);
 						memoryTupleIndex.at(i) = 0;
-						minimumTuple = mem.getBlock(i)->getTuple(memoryTupleIndex[i]);
-						minimumBlockIndex = i;
-						minimumTupleIndex = memoryTupleIndex[i];
+						minimumTuple1 = mem.getBlock(i)->getTuple(memoryTupleIndex[i]);
+						minimumBlockIndex1 = i;
+						minimumTupleIndex1 = memoryTupleIndex[i];
 						break;
 					}
 				}
 			}
 
 		}
+
+		for (int i = subListsOfTable1.size(); i < subListsOfTable1.size() + subListsOfTable2.size(); i++) {
+			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
+				Relation * relation_pointer = memoryBlockIndex[i];
+				if (memoryTupleIndex[i] < mem.getBlock(i)->getNumTuples()) {
+					minimumTuple2 = mem.getBlock(i)->getTuple(memoryTupleIndex[i]);
+					minimumBlockIndex2 = i;
+					minimumTupleIndex2 = memoryTupleIndex[i];
+					break;
+				}
+				else if (memoryTupleIndex[i] >= mem.getBlock(i)->getNumTuples()) {
+					Relation* relationOfBlock = memoryBlockIndex[i];
+					int diskBlockIndex = mapOfRelationNamesWithBlocks[relationOfBlock];
+					if (relationOfBlock->getNumOfBlocks() <= diskBlockIndex + 1) {
+						mapOfRelationNamesWithBlocks.at(relationOfBlock) = -1;
+						++noOfTables2Complete;
+						continue;
+					}
+					else {
+						mapOfRelationNamesWithBlocks.at(relationOfBlock) = diskBlockIndex + 1;
+						relationOfBlock->getBlock(mapOfRelationNamesWithBlocks[relationOfBlock], i);
+						memoryTupleIndex.at(i) = 0;
+						minimumTuple2 = mem.getBlock(i)->getTuple(memoryTupleIndex[i]);
+						minimumBlockIndex2 = i;
+						minimumTupleIndex2 = memoryTupleIndex[i];
+						break;
+					}
+				}
+			}
+		}
+
 	}
 	if (!resultant_block_pointer->isEmpty()) {
 		joinedTable->setBlock(relation_block_index++, mem.getMemorySize() - 1);

@@ -24,6 +24,14 @@ public:
 		return this->operand2;
 	}
 
+	void setOperand1(std::vector<OperandOperator*>& operand) {
+		operand1 = operand;
+	}
+
+	void setOperand2(std::vector<OperandOperator*>& operand) {
+		operand2 = operand;
+	}
+
 	std::string getOperatorOfOperation() {
 		return this->operatorOfOperation;
 	}
