@@ -842,6 +842,46 @@ bool checkIfTupleSatisfiesJoinConditions(Tuple& tupleForTable1,Tuple& tupleForTa
 		return true;
 }
 
+
+bool checkMinimumTupleAcrossSchemas(Tuple& tupleForTable1, Tuple& tupleForTable2, 
+	Schema& schemaOfTable1, vector<JoinCondition*> &listOfJoinConditions) {
+	if (listOfJoinConditions.empty()) {
+		return true;
+	}
+	vector<JoinCondition*>::iterator itrList;
+	for (itrList = listOfJoinConditions.begin(); itrList != listOfJoinConditions.end(); itrList++) {
+		int size = (*itrList)->getOperand1().size();
+		if (size == 1 && (*itrList)->getOperand1().front()->getType() == VARIABLE
+			&& schemaOfTable1.getFieldType((*itrList)->getOperand1().front()->getName()) == STR20) {
+
+			string operand1 = *tupleForTable1.getField((*itrList)->getOperand1().front()->getName()).str;
+			string operand2 = (*itrList)->getOperand2().front()->getType() == VARIABLE ? *tupleForTable2.getField((*itrList)->getOperand2().front()->getName()).str :
+				(*itrList)->getOperand2().front()->getName();
+			if (strcmp(operand1.c_str(), operand2.c_str()) > 0)
+			{
+				return true;
+			}
+			else if (strcmp(operand1.c_str(), operand2.c_str()) < 0)
+			{
+				return false;
+			}
+		}
+		else {
+			int valueOfOperand1 = getValueFromConversionOfPrefixToInfix((*itrList)->getOperand1(), tupleForTable1);
+			int valueOfOperand2 = getValueFromConversionOfPrefixToInfix((*itrList)->getOperand2(), tupleForTable2);
+			if (valueOfOperand1 >valueOfOperand2)
+			{
+				return true;
+			}
+			else if (valueOfOperand1 <valueOfOperand2)
+			{
+				return false;
+			}
+		}
+	}
+	return false;
+}
+
 vector<string> getStringOfVariablesFromConversionOfPrefixToInfix(vector<OperandOperator *> vectorOfOperands) {
 	vector<string> fieldNames;
 	vector<OperandOperator *>::reverse_iterator operandIterator;
@@ -957,13 +997,8 @@ Relation * joinTables(vector<Relation*>& subListsOfTable1, vector<Relation*>& su
 	}
 	vector<string> comparingJoinOperandsOfTable1 = getListOfVariablesToCompareForMinimumTupleFromTable(subListsOfTable1.front()->getSchema(), joinConditions,1);
 	vector<string> comparingJoinOperandsOfTable2 = getListOfVariablesToCompareForMinimumTupleFromTable(subListsOfTable2.front()->getSchema(), joinConditions, 2);
-	vector<JoinCondition *> listOfNewJoinConditionsForComparingPurposes;
-	vector<JoinCondition*>::iterator iteratorForJoin;
-	for (iteratorForJoin = joinConditions.begin(); iteratorForJoin != joinConditions.end();
-		iteratorForJoin++) {
-		JoinCondition newJoinCondition((*iteratorForJoin)->getOperand1(), "<", (*iteratorForJoin)->getOperand2());
-		listOfNewJoinConditionsForComparingPurposes.push_back(&newJoinCondition);
-	}
+	
+
 	
 	Block* resultant_block_pointer = mem.getBlock(mem.getMemorySize() - 1);
 	resultant_block_pointer->clear();
@@ -1036,13 +1071,14 @@ Relation * joinTables(vector<Relation*>& subListsOfTable1, vector<Relation*>& su
 		Tuple minimumTuple = minimumTuple1;
 		int minimumBlockIndex = minimumBlockIndex1;
 		int minimumTupleIndex = minimumTupleIndex1;
-		if (checkIfTupleSatisfiesJoinConditions(minimumTuple1, minimumTuple2, subListsOfTable1.front()->getSchema(), listOfNewJoinConditionsForComparingPurposes) == true) {
+		if (checkMinimumTupleAcrossSchemas(minimumTuple1,minimumTuple2,schemaOfTable1,joinConditions)==false){
 			minimumTupleSelectedFrom1 = true;
 		}
 		else {
 			minimumTuple = minimumTuple2;
 			minimumBlockIndex = minimumBlockIndex2;
 			minimumTupleIndex2 = minimumTupleIndex2;
+			minimumTupleSelectedFrom1 = false;
 		}
 		
 		if (minimumTupleSelectedFrom1 == true) {
