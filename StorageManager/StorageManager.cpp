@@ -1065,6 +1065,11 @@ void SchemaManager::printSchemas(ostream &out) const {
   }
 }
 
+void SchemaManager::reduceOffset(int num)
+{
+	offset -= num;
+}
+
 ostream &operator<<(ostream &out, const SchemaManager &sm) {
   sm.printSchemas(out);
   return out;

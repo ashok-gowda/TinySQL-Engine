@@ -39,6 +39,8 @@ class SchemaManager {
     Schema getSchema(string relation_name) const; //returns empty schema if the relation is not found
     bool relationExists(string relation_name) const; //returns true if the relation exists
     
+	void reduceOffset(int num);
+
     // returns a pointer to the newly allocated relation; the relation name must not exist already
     Relation* createRelation(string relation_name,const Schema& schema);
     Relation* getRelation(string relation_name); //returns NULL if the relation is not found
