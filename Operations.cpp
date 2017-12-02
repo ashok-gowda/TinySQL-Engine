@@ -777,7 +777,6 @@ Relation * removeDuplicatesOperation(vector<Relation*>  vectorOfSubLists, Schema
 			resultant_block_pointer->clear();
 		}
 		resultant_block_pointer->appendTuple(minimumTuple);
-		minimumTuple.printTuple();
 		//Next first tuple
 		for (int i = 0; i < totalNoofTables; i++) {
 			if (memoryBlockIndex.find(i) != memoryBlockIndex.end() && mapOfRelationNamesWithBlocks[memoryBlockIndex[i]] != -1) {
