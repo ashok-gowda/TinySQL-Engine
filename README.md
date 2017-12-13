@@ -14,10 +14,15 @@ Pushing Down Selections and Projections
 
 The Project is Implemented on top of an Existing Storage Manager Library
 
+## How to Run This Project
+a) The Compiled Exe File in kept in the Application subfolder of this project. Run the Exe file
+b) Sample Set of Instructions is kept in the source/TinySQL-Commands.txt
 
 
 
-Grammer Accepted by the TinySQL Engine
+## Grammer Accepted by the TinySQL Engine
+
+Grammer outside this will be rejected as an error by SQL Engine
 
 letter ::= a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r
 | s | t | u | v | w | x | y | z
